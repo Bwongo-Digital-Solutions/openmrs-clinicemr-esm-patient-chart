@@ -1,0 +1,6 @@
+dist/
+node_modules/
+.yarn/cache/
+.yarn/install-state.gz
+test-results/
+playwright-report/

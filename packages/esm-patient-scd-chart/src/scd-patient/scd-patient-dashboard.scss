@@ -1,0 +1,247 @@
+@use '@carbon/layout';
+@use '@carbon/type';
+@use '@carbon/colors';
+
+.dashboardWrapper {
+  padding: layout.$spacing-07;
+  max-width: 1400px;
+  margin: 0 auto;
+}
+
+.backNav {
+  margin-bottom: layout.$spacing-05;
+}
+
+// ── Header ────────────────────────────────────────────────────────────
+.dashboardHeader {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  margin-bottom: layout.$spacing-07;
+  padding-bottom: layout.$spacing-05;
+  border-bottom: 2px solid colors.$blue-60;
+  flex-wrap: wrap;
+  gap: layout.$spacing-04;
+}
+
+.headerLeft {
+  display: flex;
+  flex-direction: column;
+  gap: layout.$spacing-02;
+}
+
+.dashboardTitle {
+  @include type.type-style('heading-04');
+  color: colors.$blue-70;
+  margin: 0;
+}
+
+.dashboardSubtitle {
+  @include type.type-style('label-01');
+  color: colors.$gray-60;
+  margin: 0;
+}
+
+.editHeader {
+  margin-bottom: layout.$spacing-04;
+}
+
+.cancelBtn {
+  margin-bottom: layout.$spacing-04;
+}
+
+// ── Grid ──────────────────────────────────────────────────────────────
+.dashboardGrid {
+  row-gap: layout.$spacing-05;
+}
+
+// ── Cards ─────────────────────────────────────────────────────────────
+.card {
+  height: 100%;
+  border-radius: 8px;
+  border: 1px solid colors.$gray-20;
+  background-color: colors.$white-0;
+  padding: layout.$spacing-05;
+}
+
+.cardHeader {
+  display: flex;
+  align-items: center;
+  gap: layout.$spacing-03;
+  margin-bottom: layout.$spacing-05;
+  padding-bottom: layout.$spacing-03;
+  border-bottom: 1px solid colors.$gray-20;
+}
+
+.cardIcon {
+  color: colors.$blue-60;
+  flex-shrink: 0;
+}
+
+.cardTitle {
+  @include type.type-style('heading-02');
+  color: colors.$gray-90;
+  margin: 0;
+}
+
+// ── Hero card ─────────────────────────────────────────────────────────
+.heroCard {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
+  padding: layout.$spacing-07 layout.$spacing-05;
+  background: linear-gradient(135deg, colors.$blue-10, colors.$white-0);
+}
+
+.photoFrame {
+  width: 120px;
+  height: 120px;
+  border-radius: 50%;
+  overflow: hidden;
+  border: 3px solid colors.$blue-40;
+  margin-bottom: layout.$spacing-05;
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background-color: colors.$gray-10;
+}
+
+.patientPhoto {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.photoFallback {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 100%;
+  height: 100%;
+  background-color: colors.$gray-10;
+}
+
+.photoFallbackIcon {
+  color: colors.$gray-40;
+}
+
+.patientName {
+  @include type.type-style('heading-03');
+  color: colors.$gray-90;
+  margin: 0 0 layout.$spacing-04 0;
+}
+
+.heroMeta {
+  display: flex;
+  flex-direction: column;
+  gap: layout.$spacing-02;
+  align-items: center;
+}
+
+.metaItem {
+  @include type.type-style('body-compact-01');
+  color: colors.$gray-60;
+  display: flex;
+  align-items: center;
+  gap: layout.$spacing-02;
+}
+
+.deathMeta {
+  color: colors.$red-60;
+}
+
+// ── Data list ─────────────────────────────────────────────────────────
+.dataList {
+  display: grid;
+  grid-template-columns: auto 1fr;
+  gap: layout.$spacing-04 layout.$spacing-05;
+  margin: 0;
+
+  dt {
+    @include type.type-style('label-01');
+    color: colors.$gray-60;
+    font-weight: 600;
+    white-space: nowrap;
+    padding-top: 2px;
+  }
+
+  dd {
+    @include type.type-style('body-compact-01');
+    color: colors.$gray-90;
+    margin: 0;
+  }
+}
+
+.tagGroup {
+  display: flex;
+  flex-wrap: wrap;
+  gap: layout.$spacing-02;
+}
+
+.comments {
+  font-style: italic;
+  color: colors.$gray-70;
+}
+
+// ── Treatments ────────────────────────────────────────────────────────
+.treatmentList {
+  display: flex;
+  flex-direction: column;
+  gap: layout.$spacing-04;
+}
+
+.treatmentItem {
+  display: flex;
+  align-items: center;
+  gap: layout.$spacing-04;
+  flex-wrap: wrap;
+}
+
+.treatmentDates {
+  @include type.type-style('body-compact-01');
+  color: colors.$gray-60;
+}
+
+// ── Diagnoses ─────────────────────────────────────────────────────────
+.diagnosisList {
+  display: flex;
+  flex-wrap: wrap;
+  gap: layout.$spacing-04;
+}
+
+.diagnosisCard {
+  border: 1px solid colors.$red-20;
+  border-radius: 6px;
+  padding: layout.$spacing-04;
+  background-color: colors.$red-10;
+  min-width: 220px;
+  flex: 1;
+}
+
+.diagnosisCardHeader {
+  display: flex;
+  align-items: center;
+  gap: layout.$spacing-03;
+  flex-wrap: wrap;
+}
+
+.diagnosisDate {
+  @include type.type-style('helper-text-01');
+  color: colors.$gray-60;
+}
+
+.diagnosisOther {
+  @include type.type-style('body-compact-01');
+  color: colors.$gray-70;
+  margin: layout.$spacing-03 0 0 0;
+}
+
+// ── Empty state ───────────────────────────────────────────────────────
+.emptyNote {
+  @include type.type-style('body-01');
+  color: colors.$gray-50;
+  font-style: italic;
+  margin: 0;
+}

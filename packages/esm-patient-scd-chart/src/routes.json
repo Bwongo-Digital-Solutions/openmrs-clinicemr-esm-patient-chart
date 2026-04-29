@@ -1,0 +1,59 @@
+{
+  "$schema": "https://json.openmrs.org/routes.schema.json",
+  "backendDependencies": {
+    "fhir2": ">=1.2",
+    "webservices.rest": ">=2.2.0"
+  },
+  "extensions": [
+    {
+      "name": "Red box",
+      "component": "redBox",
+      "slot": "Boxes"
+    },
+    {
+      "name": "Blue box",
+      "component": "blueBox",
+      "slot": "Boxes"
+    },
+    {
+      "name": "Brand box",
+      "component": "brandBox",
+      "slot": "Boxes"
+    },
+    {
+      "name": "scd-general-info-dashboard",
+      "component": "scdGeneralInfoLink",
+      "slot": "scd-general-info-dashboard-slot",
+      "meta": {
+        "title": "General Information",
+        "path": "scd-general-info"
+      }
+    },
+    {
+      "name": "scd-summary-dashboard",
+      "component": "scdDashboardLink",
+      "slot": "patient-chart-dashboard-slot",
+      "meta": {
+        "slot": "patient-chart-scd-dashboard-slot",
+        "path": "SCD General Info"
+      },
+      "order": 11
+    },
+    {
+      "name": "scd-patient-dashboard-widget",
+      "component": "scdPatientDashboard",
+      "slot": "patient-chart-scd-dashboard-slot",
+      "order": 1
+    }
+  ],
+  "pages": [
+    {
+      "component": "root",
+      "route": "root"
+    },
+    {
+      "component": "scdPatientDashboard",
+      "route": "scd-patient"
+    }
+  ]
+}

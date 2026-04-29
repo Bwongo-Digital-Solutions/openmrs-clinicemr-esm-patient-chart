@@ -1,0 +1,346 @@
+@use '@carbon/layout';
+@use '@carbon/type';
+@use '@carbon/colors';
+
+.formWrapper {
+  max-width: 1200px;
+  margin: 0 auto;
+  padding: layout.$spacing-07;
+}
+
+.formHeader {
+  margin-bottom: layout.$spacing-06;
+  border-bottom: 2px solid colors.$blue-60;
+  padding-bottom: layout.$spacing-05;
+}
+
+.formTitle {
+  @include type.type-style('heading-04');
+  color: colors.$blue-70;
+  margin: 0;
+}
+
+.notification {
+  margin-bottom: layout.$spacing-05;
+}
+
+// ── Floating error banner wrapper (fixed top-center) ─────────────────
+.floatingErrorBanner {
+  position: fixed;
+  top: 0;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 90%;
+  max-width: 800px;
+  z-index: 9999;
+  padding-top: layout.$spacing-05;
+  pointer-events: none;
+
+  > * {
+    pointer-events: auto;
+  }
+}
+
+// ── High-contrast error notifications ────────────────────────────────
+.validationNotification,
+.errorNotification {
+  margin-bottom: layout.$spacing-05;
+  background-color: #da1e28 !important; // Carbon red-60
+  border-left: 4px solid #750e13 !important; // Carbon red-80
+  color: #ffffff !important;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+  border-radius: 4px;
+
+  :global(.cds--inline-notification__title),
+  :global(.cds--inline-notification__subtitle),
+  :global(.cds--inline-notification__text-wrapper) {
+    color: #ffffff !important;
+  }
+
+  :global(.cds--inline-notification__icon) {
+    fill: #ffffff !important;
+  }
+
+  :global(.cds--inline-notification__close-button svg) {
+    fill: #ffffff !important;
+  }
+}
+
+.errorList {
+  margin: layout.$spacing-03 0 0 0;
+  padding-left: layout.$spacing-05;
+  list-style: disc;
+  color: #ffffff;
+}
+
+.errorItem {
+  @include type.type-style('body-compact-01');
+  color: #ffffff;
+  padding: layout.$spacing-02 0;
+  line-height: 1.4;
+}
+
+// ── High-contrast green success toast ────────────────────────────────
+.successToast {
+  margin-bottom: layout.$spacing-05;
+  background-color: #198038 !important; // Carbon green-60
+  border-left: 4px solid #0e6027 !important; // Carbon green-70
+  color: #ffffff !important;
+
+  :global(.cds--toast-notification__title),
+  :global(.cds--toast-notification__subtitle),
+  :global(.cds--toast-notification__caption) {
+    color: #ffffff !important;
+  }
+
+  :global(.cds--toast-notification__icon) {
+    fill: #ffffff !important;
+  }
+
+  :global(.cds--toast-notification__close-button svg) {
+    fill: #ffffff !important;
+  }
+}
+
+// ── Field spacing (prevents overlapping between adjacent fields) ──────
+.fieldSpacing {
+  margin-bottom: layout.$spacing-06;
+}
+
+// ── Patient identity banner (read-only) ───────────────────────────────
+.patientBanner {
+  margin-bottom: layout.$spacing-05;
+  padding: layout.$spacing-04 layout.$spacing-05;
+  background-color: colors.$blue-10;
+  border-left: 4px solid colors.$blue-60;
+  border-radius: 4px;
+}
+
+.patientBannerContent {
+  display: flex;
+  align-items: baseline;
+  gap: layout.$spacing-05;
+  flex-wrap: wrap;
+}
+
+.patientBannerName {
+  @include type.type-style('heading-03');
+  color: colors.$blue-80;
+  font-weight: 600;
+}
+
+.patientBannerDob {
+  @include type.type-style('body-01');
+  color: colors.$gray-70;
+}
+
+.section {
+  margin-bottom: layout.$spacing-06;
+  padding: layout.$spacing-06;
+  border-radius: 8px;
+  border: 1px solid colors.$gray-20;
+  background-color: colors.$white-0;
+}
+
+.sectionTitle {
+  @include type.type-style('heading-03');
+  color: colors.$gray-90;
+  margin: 0 0 layout.$spacing-05 0;
+  padding-bottom: layout.$spacing-03;
+  border-bottom: 1px solid colors.$gray-20;
+}
+
+.sectionHint {
+  @include type.type-style('body-01');
+  color: colors.$gray-60;
+  margin: 0 0 layout.$spacing-05 0;
+}
+
+.listRow {
+  display: flex;
+  align-items: flex-end;
+  gap: layout.$spacing-03;
+  margin-bottom: layout.$spacing-03;
+
+  > :first-child {
+    flex: 1;
+  }
+}
+
+.iconBtn {
+  flex-shrink: 0;
+  margin-bottom: 2px;
+}
+
+.addBtn {
+  margin-top: layout.$spacing-03;
+}
+
+.emptyNote {
+  @include type.type-style('body-01');
+  color: colors.$gray-50;
+  font-style: italic;
+  margin-bottom: layout.$spacing-04;
+}
+
+// ── Photo ──────────────────────────────────────────────────────────────
+.photoRow {
+  display: flex;
+  align-items: flex-start;
+  gap: layout.$spacing-06;
+  flex-wrap: wrap;
+}
+
+.photoPreview {
+  width: 160px;
+  height: 160px;
+  border-radius: 8px;
+  overflow: hidden;
+  border: 2px dashed colors.$gray-30;
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background-color: colors.$gray-10;
+}
+
+.photoImg {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.photoPlaceholder {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: layout.$spacing-02;
+  padding: layout.$spacing-04;
+}
+
+.photoIcon {
+  color: colors.$gray-40;
+}
+
+.photoPlaceholderText {
+  @include type.type-style('helper-text-01');
+  color: colors.$gray-50;
+  text-align: center;
+}
+
+.photoUpload {
+  display: flex;
+  flex-direction: column;
+  gap: layout.$spacing-03;
+  align-self: center;
+}
+
+.removePhotoBtn {
+  width: fit-content;
+}
+
+// ── Siblings ──────────────────────────────────────────────────────────
+.siblingCard {
+  border: 1px solid colors.$gray-20;
+  border-radius: 6px;
+  padding: layout.$spacing-05;
+  margin-bottom: layout.$spacing-04;
+  background-color: colors.$gray-10;
+}
+
+.siblingHeader {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: layout.$spacing-04;
+}
+
+.siblingLabel {
+  @include type.type-style('label-02');
+  font-weight: 600;
+  color: colors.$gray-70;
+}
+
+// ── Date picker sizing ────────────────────────────────────────────────
+.datePicker {
+  min-width: 200px;
+
+  :global(.cds--date-picker-container),
+  :global(.cds--date-picker-input__wrapper) {
+    width: 100%;
+  }
+
+  :global(.cds--date-picker__input) {
+    width: 100%;
+    min-width: 200px;
+  }
+}
+
+// ── Treatments ────────────────────────────────────────────────────────
+.treatmentBlock {
+  padding: layout.$spacing-04 0;
+  border-bottom: 1px solid colors.$gray-20;
+
+  &:last-child {
+    border-bottom: none;
+  }
+}
+
+.treatmentDates {
+  display: flex;
+  flex-direction: row;
+  gap: layout.$spacing-07;
+  margin-top: layout.$spacing-05;
+  margin-left: layout.$spacing-07;
+  flex-wrap: wrap;
+  align-items: flex-end;
+
+  > * {
+    min-width: 200px;
+    flex: 0 0 auto;
+  }
+}
+
+// ── Diagnoses ─────────────────────────────────────────────────────────
+.diagnosisBlock {
+  padding: layout.$spacing-04;
+  margin-bottom: layout.$spacing-03;
+  border-radius: 6px;
+  border: 1px solid transparent;
+  transition:
+    background-color 0.15s ease,
+    border-color 0.15s ease;
+}
+
+.diagnosisBlockActive {
+  background-color: colors.$blue-10;
+  border-color: colors.$blue-30;
+}
+
+.diagnosisDetails {
+  display: flex;
+  flex-direction: row;
+  gap: layout.$spacing-07;
+  margin-top: layout.$spacing-05;
+  margin-left: layout.$spacing-07;
+  flex-wrap: wrap;
+  align-items: flex-end;
+
+  > * {
+    min-width: 200px;
+    flex: 0 0 auto;
+  }
+}
+
+.otherInput {
+  min-width: 280px;
+}
+
+// ── Form actions ──────────────────────────────────────────────────────
+.formActions {
+  display: flex;
+  gap: layout.$spacing-04;
+  justify-content: flex-end;
+  padding-top: layout.$spacing-06;
+  border-top: 1px solid colors.$gray-20;
+}
