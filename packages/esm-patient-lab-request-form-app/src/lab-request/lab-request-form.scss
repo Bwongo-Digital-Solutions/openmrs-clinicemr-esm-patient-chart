@@ -13,7 +13,7 @@
   display: flex;
   align-items: center;
   justify-content: space-between;
-  margin-bottom: layout.$spacing-06;
+  margin-bottom: layout.$spacing-05;
   padding-bottom: layout.$spacing-05;
   border-bottom: 2px solid colors.$blue-60;
   flex-wrap: wrap;
@@ -44,6 +44,29 @@
 
 .urgencyGroup {
   flex-shrink: 0;
+}
+
+// ── Progress Indicator ────────────────────────────────────────────────
+.progressContainer {
+  margin-bottom: layout.$spacing-06;
+  padding: layout.$spacing-04 0;
+}
+
+// ── Step Content ──────────────────────────────────────────────────────
+.stepContent {
+  min-height: 300px;
+  animation: fadeIn 0.2s ease-in;
+}
+
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+    transform: translateY(4px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
 }
 
 // ── Notification ──────────────────────────────────────────────────────
@@ -117,12 +140,68 @@
   margin-bottom: layout.$spacing-02;
 }
 
-// ── Notes Section ─────────────────────────────────────────────────────
-.notesSection {
-  margin-bottom: layout.$spacing-06;
+// ── Details Section (Step 2) ──────────────────────────────────────────
+.detailsSection {
+  margin-bottom: layout.$spacing-05;
   border-radius: 6px;
   border: 1px solid colors.$gray-20;
   padding: layout.$spacing-05;
+}
+
+.sectionTitle {
+  @include type.type-style('heading-compact-02');
+  color: colors.$gray-90;
+  margin: 0 0 layout.$spacing-04 0;
+}
+
+// ── Review Section (Step 3) ───────────────────────────────────────────
+.reviewSection {
+  margin-bottom: layout.$spacing-05;
+  border-radius: 6px;
+  border: 1px solid colors.$gray-20;
+  padding: layout.$spacing-05;
+}
+
+.reviewMeta {
+  display: flex;
+  align-items: center;
+  gap: layout.$spacing-04;
+}
+
+.reviewTestCount {
+  @include type.type-style('body-compact-01');
+  color: colors.$gray-70;
+}
+
+.reviewCategoryCell {
+  @include type.type-style('heading-compact-01');
+  color: colors.$blue-70;
+  vertical-align: top;
+  white-space: nowrap;
+}
+
+.reviewTestTags {
+  display: flex;
+  flex-wrap: wrap;
+  gap: layout.$spacing-02;
+}
+
+.reviewNote {
+  margin-bottom: layout.$spacing-04;
+
+  strong {
+    @include type.type-style('label-01');
+    color: colors.$gray-70;
+    display: block;
+    margin-bottom: layout.$spacing-02;
+  }
+
+  p {
+    @include type.type-style('body-01');
+    color: colors.$gray-90;
+    margin: 0;
+    white-space: pre-wrap;
+  }
 }
 
 // ── Actions ───────────────────────────────────────────────────────────

@@ -2208,6 +2208,25 @@ __metadata:
   languageName: node
   linkType: hard
 
+"@clinicemr/esm-patient-lab-request-form-app@workspace:packages/esm-patient-lab-request-form-app":
+  version: 0.0.0-use.local
+  resolution: "@clinicemr/esm-patient-lab-request-form-app@workspace:packages/esm-patient-lab-request-form-app"
+  dependencies:
+    "@carbon/icons-react": "npm:^11.68.0"
+    "@carbon/react": "npm:^1.83.0"
+    lodash-es: "npm:^4.17.21"
+  peerDependencies:
+    "@openmrs/esm-framework": "*"
+    "@openmrs/esm-patient-common-lib": "*"
+    dayjs: 1.x
+    react: 18.x
+    react-i18next: 16.x
+    react-router-dom: 6.x
+    rxjs: 6.x
+    swr: 2.x
+  languageName: unknown
+  linkType: soft
+
 "@clinicemr/esm-patient-scd-chart@workspace:packages/esm-patient-scd-chart":
   version: 0.0.0-use.local
   resolution: "@clinicemr/esm-patient-scd-chart@workspace:packages/esm-patient-scd-chart"

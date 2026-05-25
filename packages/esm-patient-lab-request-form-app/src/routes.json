@@ -11,7 +11,7 @@
     },
     {
       "name": "lab-request-form-dashboard",
-      "component": "labRequestForm",
+      "component": "labRequestDashboard",
       "slot": "patient-chart-summary-dashboard-slot",
       "meta": {
         "title": "Lab Request"
@@ -23,6 +23,22 @@
       "component": "labRequestActionButton",
       "slot": "action-menu-patient-chart-items-slot",
       "order": 5
+    },
+    {
+      "name": "lab-request-nav-link",
+      "component": "labRequestNavLink",
+      "slot": "patient-chart-dashboard-slot",
+      "meta": {
+        "title": "Lab Request",
+        "slot": "lab-request-dashboard-slot",
+        "path": "lab-request"
+      },
+      "order": 15
+    },
+    {
+      "name": "lab-request-dashboard-ext",
+      "component": "labRequestDashboard",
+      "slot": "lab-request-dashboard-slot"
     }
   ]
 }

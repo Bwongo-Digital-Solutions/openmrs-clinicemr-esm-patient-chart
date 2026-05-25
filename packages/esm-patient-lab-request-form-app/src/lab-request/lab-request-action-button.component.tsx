@@ -1,6 +1,6 @@
 import React, { useCallback } from 'react';
 import { useTranslation } from 'react-i18next';
-import { Chemistry } from '@carbon/icons-react';
+import { Chemistry } from '@carbon/react/icons';
 import { launchWorkspace } from '@openmrs/esm-framework';
 
 const LabRequestActionButton: React.FC = () => {
