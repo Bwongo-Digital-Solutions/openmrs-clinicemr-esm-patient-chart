@@ -71,7 +71,24 @@
 
 // ── Notification ──────────────────────────────────────────────────────
 .notification {
-  margin-bottom: layout.$spacing-05;
+  position: fixed;
+  top: layout.$spacing-07;
+  right: layout.$spacing-05;
+  z-index: 9999;
+  max-width: 400px;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+  animation: slideIn 0.3s ease-out;
+}
+
+@keyframes slideIn {
+  from {
+    opacity: 0;
+    transform: translateX(20px);
+  }
+  to {
+    opacity: 1;
+    transform: translateX(0);
+  }
 }
 
 // ── Selected Summary ──────────────────────────────────────────────────

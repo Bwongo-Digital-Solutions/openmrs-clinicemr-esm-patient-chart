@@ -1,9 +1,9 @@
 import React from 'react';
-import { useParams } from 'react-router-dom';
+import { usePatient } from '@openmrs/esm-framework';
 import LabRequestForm from './lab-request-form.component';
 
 const LabRequestDashboard: React.FC = () => {
-  const { patientUuid } = useParams<{ patientUuid: string }>();
+  const { patientUuid } = usePatient();
 
   return <LabRequestForm patientUuid={patientUuid} />;
 };
