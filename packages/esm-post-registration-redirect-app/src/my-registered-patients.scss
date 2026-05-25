@@ -1,0 +1,30 @@
+.container {
+  padding: 1.5rem 2rem;
+  max-width: 1200px;
+  margin: 0 auto;
+}
+
+.title {
+  margin-bottom: 1rem;
+  font-weight: 600;
+}
+
+.header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 1rem;
+
+  .title {
+    margin-bottom: 0;
+  }
+}
+
+.emptyTile {
+  padding: 2rem;
+  text-align: center;
+}
+
+.emptyAction {
+  margin-top: 1rem;
+}

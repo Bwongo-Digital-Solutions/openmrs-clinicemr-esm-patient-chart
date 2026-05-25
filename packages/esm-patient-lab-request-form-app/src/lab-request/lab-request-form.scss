@@ -1,0 +1,135 @@
+@use '@carbon/layout';
+@use '@carbon/type';
+@use '@carbon/colors';
+
+.formWrapper {
+  padding: layout.$spacing-05;
+  max-width: 1400px;
+  margin: 0 auto;
+}
+
+// ── Header ────────────────────────────────────────────────────────────
+.formHeader {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: layout.$spacing-06;
+  padding-bottom: layout.$spacing-05;
+  border-bottom: 2px solid colors.$blue-60;
+  flex-wrap: wrap;
+  gap: layout.$spacing-04;
+}
+
+.headerLeft {
+  display: flex;
+  align-items: center;
+  gap: layout.$spacing-04;
+}
+
+.headerIcon {
+  color: colors.$blue-60;
+}
+
+.formTitle {
+  @include type.type-style('heading-03');
+  color: colors.$blue-70;
+  margin: 0;
+}
+
+.patientLabel {
+  @include type.type-style('body-compact-01');
+  color: colors.$gray-60;
+  margin: layout.$spacing-01 0 0 0;
+}
+
+.urgencyGroup {
+  flex-shrink: 0;
+}
+
+// ── Notification ──────────────────────────────────────────────────────
+.notification {
+  margin-bottom: layout.$spacing-05;
+}
+
+// ── Selected Summary ──────────────────────────────────────────────────
+.selectedSummary {
+  margin-bottom: layout.$spacing-05;
+  border: 1px solid colors.$blue-30;
+  background-color: colors.$blue-10;
+  border-radius: 6px;
+  padding: layout.$spacing-04;
+}
+
+.summaryHeader {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: layout.$spacing-03;
+}
+
+.summaryCount {
+  @include type.type-style('heading-compact-01');
+  color: colors.$blue-70;
+}
+
+.tagGroup {
+  display: flex;
+  flex-wrap: wrap;
+  gap: layout.$spacing-02;
+}
+
+// ── Search ────────────────────────────────────────────────────────────
+.searchBar {
+  margin-bottom: layout.$spacing-05;
+}
+
+// ── Categories ────────────────────────────────────────────────────────
+.categoriesContainer {
+  margin-bottom: layout.$spacing-06;
+}
+
+.categoryAccordion {
+  border-bottom: 1px solid colors.$gray-20;
+}
+
+.categoryTitle {
+  display: flex;
+  align-items: center;
+  gap: layout.$spacing-03;
+  @include type.type-style('heading-compact-01');
+}
+
+.categoryContent {
+  padding: layout.$spacing-03 0;
+}
+
+.selectAllRow {
+  padding-bottom: layout.$spacing-03;
+  margin-bottom: layout.$spacing-03;
+  border-bottom: 1px dashed colors.$gray-30;
+}
+
+.testsGrid {
+  row-gap: layout.$spacing-02;
+}
+
+.testCheckbox {
+  margin-bottom: layout.$spacing-02;
+}
+
+// ── Notes Section ─────────────────────────────────────────────────────
+.notesSection {
+  margin-bottom: layout.$spacing-06;
+  border-radius: 6px;
+  border: 1px solid colors.$gray-20;
+  padding: layout.$spacing-05;
+}
+
+// ── Actions ───────────────────────────────────────────────────────────
+.formActions {
+  display: flex;
+  gap: layout.$spacing-04;
+  flex-wrap: wrap;
+  padding-top: layout.$spacing-05;
+  border-top: 1px solid colors.$gray-20;
+}

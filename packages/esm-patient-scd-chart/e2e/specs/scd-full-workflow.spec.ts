@@ -35,13 +35,13 @@ const D = {
   sibling1Name: 'Alice Nakato',
   sibling1Yob: '2015',
   sibling1Tested: 'yes' as const,
-  sibling1Result: 'negative' as const,
+  sibling1Result: 'AA' as const,
   sibling1Ssuubo: 'SSU-001',
 
   sibling2Name: 'Bob Kato',
   sibling2Yob: '2012',
   sibling2Tested: 'yes' as const,
-  sibling2Result: 'positive' as const,
+  sibling2Result: 'SS' as const,
   sibling2Ssuubo: 'SSU-002',
 
   diag1Key: 'scdNonHU',
@@ -195,14 +195,14 @@ test.describe('SCD Full Workflow', () => {
     expect(s1).toBeTruthy();
     expect(s1?.yearOfBirth).toBe(D.sibling1Yob);
     expect(s1?.tested).toBe(D.sibling1Tested);
-    expect(s1?.result).toBe(D.sibling1Result);
+    expect(s1?.result).toBe('AA - Healthy Person');
     expect(s1?.ssuuboNo).toBe(D.sibling1Ssuubo);
 
     const s2 = siblings.find((s) => s.name === D.sibling2Name);
     expect(s2).toBeTruthy();
     expect(s2?.yearOfBirth).toBe(D.sibling2Yob);
     expect(s2?.tested).toBe(D.sibling2Tested);
-    expect(s2?.result).toBe(D.sibling2Result);
+    expect(s2?.result).toBe('SS - Sickle Cell');
     expect(s2?.ssuuboNo).toBe(D.sibling2Ssuubo);
 
     // ── 15. Verify Primary Diagnoses card ─────────────────────────────────

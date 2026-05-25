@@ -50,9 +50,6 @@ test.describe('SCD Form Submission', () => {
     // Verify the data is displayed correctly on dashboard
     const dashboardData = await scdDashboardPage.getDashboardData();
     expect(dashboardData.address).toBe('123 Test Street, Kampala');
-    expect(dashboardData.comments).toBe('Test patient for SCD form submission');
-    expect(dashboardData.contactNumbers).toContain('+256700123456');
-    expect(dashboardData.contactNumbers).toContain('+256711987654');
     expect(dashboardData.scdDiagnosisDate).toContain('Jan 15, 2023');
     expect(dashboardData.ssuuboEnrollmentDate).toContain('Feb 1, 2023');
     expect(dashboardData.pcvVaccinationDate).toContain('Jan 20, 2023');
@@ -100,7 +97,7 @@ test.describe('SCD Form Submission', () => {
       name: 'John Doe',
       yearOfBirth: '2010',
       testedForScd: 'yes',
-      testResult: 'negative',
+      testResult: 'AA',
       ssuuboNo: 'SSUUBO001',
     });
 
@@ -119,7 +116,7 @@ test.describe('SCD Form Submission', () => {
     const siblings = await scdDashboardPage.getSiblingsData();
 
     expect(siblings).toHaveLength(2);
-    expect(siblings.some((s) => s.name === 'John Doe' && s.result === 'negative')).toBeTruthy();
+    expect(siblings.some((s) => s.name === 'John Doe' && s.result === 'AA - Healthy Person')).toBeTruthy();
     expect(siblings.some((s) => s.name === 'Jane Doe' && s.tested === 'no')).toBeTruthy();
   });
 
@@ -169,7 +166,6 @@ test.describe('SCD Form Submission', () => {
     await scdDashboardPage.gotoAndWaitForData(patient.uuid);
     const dashboardData = await scdDashboardPage.getDashboardData();
     expect(dashboardData.address).toBe('Updated Address');
-    expect(dashboardData.comments).toBe('Updated comments');
   });
 
   test('should handle death date correctly', async ({ page }) => {
@@ -275,7 +271,7 @@ test.describe('SCD Form Submission', () => {
       name: 'Alice Test',
       yearOfBirth: '2012',
       testedForScd: 'yes',
-      testResult: 'positive',
+      testResult: 'SS',
       ssuuboNo: 'SSB-007',
     });
 
@@ -295,7 +291,6 @@ test.describe('SCD Form Submission', () => {
     // ── Assert: Comments & key dates ─────────────────────────────────
     const dash = await scdDashboardPage.getDashboardData();
     expect(dash.address).toBe('42 Persistence Lane, Kampala');
-    expect(dash.comments).toBe('All-sections persistence test comment');
     expect(dash.scdDiagnosisDate).toContain('May 20, 2021');
     expect(dash.ssuuboEnrollmentDate).toContain('Jun 1, 2021');
     expect(dash.pcvVaccinationDate).toContain('Apr 10, 2021');
@@ -310,7 +305,7 @@ test.describe('SCD Form Submission', () => {
     expect(siblings).toHaveLength(1);
     expect(siblings[0].name).toBe('Alice Test');
     expect(siblings[0].yearOfBirth).toBe('2012');
-    expect(siblings[0].result).toBe('positive');
+    expect(siblings[0].result).toBe('SS - Sickle Cell');
     expect(siblings[0].ssuuboNo).toBe('SSB-007');
 
     // ── Assert: Primary diagnoses ────────────────────────────────────

@@ -33,8 +33,11 @@ import {
   uploadPatientPhoto,
   usePatientDemographics,
   usePersonDetails,
+  usePatientPhoto,
+  useEmergencyContacts,
   savePersonDetails,
   saveContactNumbers,
+  saveEmergencyContactObs,
 } from './scd-patient.resource';
 import styles from './scd-general-info-form.scss';
 
@@ -91,8 +94,16 @@ const ScdGeneralInfoForm: React.FC<ScdGeneralInfoFormProps> = ({
     contactNumbers: personPhones,
     isLoading: isLoadingPerson,
   } = usePersonDetails(patientUuid ?? '');
+  const { photographyUrl: storedPhotoUrl } = usePatientPhoto(patientUuid ?? '');
+  const { contacts: emergencyContacts, isLoading: isLoadingEmergencyContacts } = useEmergencyContacts(
+    patientUuid ?? '',
+    config.registrationEncounterTypeUuid,
+    config.emergencyContactConcepts,
+  );
   const [form, setForm] = useState<ScdPatientGeneralInfo>({ ...initialFormState, ...initialData });
   const personHydratedRef = useRef(false);
+  const photoHydratedRef = useRef(false);
+  const emergencyHydratedRef = useRef(false);
   const [isSaving, setIsSaving] = useState(false);
   const [saveError, setSaveError] = useState<string | null>(null);
   const [errors, setErrors] = useState<FormErrors>({});
@@ -111,6 +122,47 @@ const ScdGeneralInfoForm: React.FC<ScdGeneralInfoFormProps> = ({
       contactNumbers: personPhones.length > 0 ? personPhones : prev.contactNumbers,
     }));
   }, [isLoadingPerson, patientUuid, personAddress, personDeathDate, personPhones]);
+
+  // Hydrate the photo preview from the latest server-side attachment so editing
+  // an existing patient shows their current image (without re-uploading).
+  useEffect(() => {
+    if (!patientUuid || photoHydratedRef.current || !storedPhotoUrl) return;
+    photoHydratedRef.current = true;
+    setForm((prev) => (prev.photographyUrl ? prev : { ...prev, photographyUrl: storedPhotoUrl }));
+  }, [patientUuid, storedPhotoUrl]);
+
+  // Hydrate emergency contact phone numbers (Parent/Guardian, Spouse/Partner,
+  // Emergency Contact) from the registration encounter so the user can see and
+  // edit them in the same Contact Numbers list as the primary phone. Without
+  // this, only the primary phone (read from the person attribute) shows up and
+  // a save would silently discard the rest.
+  useEffect(() => {
+    if (!patientUuid || emergencyHydratedRef.current || isLoadingEmergencyContacts) return;
+    if (!emergencyContacts || emergencyContacts.length === 0) return;
+    emergencyHydratedRef.current = true;
+    setForm((prev) => {
+      const existingPhones = (prev.contactNumbers ?? []).filter(Boolean);
+      const existingNames = (prev.contactOwnerNames ?? []).filter((_, idx) => Boolean(prev.contactNumbers?.[idx]));
+      const mergedPhones = [...existingPhones];
+      const mergedNames = [...existingNames];
+      for (const ec of emergencyContacts) {
+        const phone = ec.phone || '';
+        const idx = phone ? mergedPhones.indexOf(phone) : -1;
+        if (idx >= 0) {
+          // Update name in place if known
+          if (ec.ownerName) mergedNames[idx] = ec.ownerName;
+        } else {
+          mergedPhones.push(phone);
+          mergedNames.push(ec.ownerName ?? '');
+        }
+      }
+      // Only commit if anything actually changed
+      if (mergedPhones.length === existingPhones.length && mergedNames.every((n, i) => n === existingNames[i])) {
+        return prev;
+      }
+      return { ...prev, contactNumbers: mergedPhones, contactOwnerNames: mergedNames };
+    });
+  }, [patientUuid, isLoadingEmergencyContacts, emergencyContacts]);
 
   const validate = useCallback(
     (data: ScdPatientGeneralInfo): FormErrors => {
@@ -202,17 +254,31 @@ const ScdGeneralInfoForm: React.FC<ScdGeneralInfoFormProps> = ({
   );
 
   // ── Contact numbers ──────────────────────────────────────────────────
-  const addContact = () => setField('contactNumbers', [...form.contactNumbers, '']);
+  // contactNumbers[i] is paired with contactOwnerNames[i].
+  const addContact = () => {
+    setForm((prev) => ({
+      ...prev,
+      contactNumbers: [...prev.contactNumbers, ''],
+      contactOwnerNames: [...(prev.contactOwnerNames ?? []), ''],
+    }));
+  };
   const updateContact = (idx: number, val: string) => {
     const updated = [...form.contactNumbers];
     updated[idx] = val;
     setField('contactNumbers', updated);
   };
+  const updateOwnerName = (idx: number, val: string) => {
+    const updated = [...(form.contactOwnerNames ?? [])];
+    while (updated.length <= idx) updated.push('');
+    updated[idx] = val;
+    setField('contactOwnerNames', updated);
+  };
   const removeContact = (idx: number) => {
-    setField(
-      'contactNumbers',
-      form.contactNumbers.filter((_, i) => i !== idx),
-    );
+    setForm((prev) => ({
+      ...prev,
+      contactNumbers: prev.contactNumbers.filter((_, i) => i !== idx),
+      contactOwnerNames: (prev.contactOwnerNames ?? []).filter((_, i) => i !== idx),
+    }));
   };
 
   // ── Photo ─────────────────────────────────────────────────────────────
@@ -430,25 +496,77 @@ const ScdGeneralInfoForm: React.FC<ScdGeneralInfoFormProps> = ({
         }
       }
 
-      // Save to OpenMRS if patientUuid is available
+      // Save to OpenMRS if patientUuid is available. We use allSettled so one
+      // failing request (e.g. an obs rejected with `error.noValue`) doesn't lose
+      // the other writes — the form still saves what it can and only the failed
+      // sub-task is reported.
       if (patientUuid) {
-        await Promise.all([
-          // Clinical obs → encounter
-          config.scdEncounterTypeUuid
-            ? saveScdEncounter(
-                patientUuid,
-                finalForm,
-                config.scdEncounterTypeUuid,
-                config.conceptUuids,
-                config.scdLocationUuid || undefined,
-                existingEncounterUuid,
-              )
-            : Promise.resolve(),
-          // Personal details → person record
-          savePersonDetails(patientUuid, finalForm.address, finalForm.deathDate),
-          // Phone numbers → person attributes
-          saveContactNumbers(patientUuid, finalForm.contactNumbers),
-        ]);
+        const tasks: Array<{ name: string; promise: Promise<unknown> }> = [
+          {
+            name: t('clinicalDetails', 'Clinical details'),
+            promise: config.scdEncounterTypeUuid
+              ? saveScdEncounter(
+                  patientUuid,
+                  finalForm,
+                  config.scdEncounterTypeUuid,
+                  config.conceptUuids,
+                  config.scdLocationUuid || undefined,
+                  existingEncounterUuid,
+                )
+              : Promise.resolve(),
+          },
+          {
+            name: t('personDetails', 'Person details'),
+            promise: savePersonDetails(patientUuid, finalForm.address, finalForm.deathDate),
+          },
+          {
+            name: t('contactNumbers', 'Contact numbers'),
+            promise: saveContactNumbers(patientUuid, finalForm.contactNumbers),
+          },
+          {
+            // Mirror the additional contact numbers back to the registration
+            // encounter so the dashboard's Parent/Guardian, Spouse/Partner and
+            // Emergency Contact rows stay in sync. By convention, the contact
+            // list maps as:
+            //   index 0 → primary (handled by saveContactNumbers above)
+            //   index 1 → parent / guardian
+            //   index 2 → spouse / partner
+            //   index 3 → emergency contact
+            name: t('emergencyContacts', 'Emergency contacts'),
+            promise: saveEmergencyContactObs(
+              patientUuid,
+              config.registrationEncounterTypeUuid,
+              config.emergencyContactConcepts ?? {},
+              {
+                parentGuardianPhone: finalForm.contactNumbers[1] ?? '',
+                spousePartnerPhone: finalForm.contactNumbers[2] ?? '',
+                emergencyContactPhone: finalForm.contactNumbers[3] ?? '',
+                parentGuardianName: finalForm.contactOwnerNames?.[1] ?? '',
+                spousePartnerName: finalForm.contactOwnerNames?.[2] ?? '',
+                emergencyContactName: finalForm.contactOwnerNames?.[3] ?? '',
+              },
+            ),
+          },
+        ];
+
+        const results = await Promise.allSettled(tasks.map((task) => task.promise));
+        const failures = results
+          .map((r, i) => ({ ...r, name: tasks[i].name }))
+          .filter((r): r is PromiseRejectedResult & { name: string } => r.status === 'rejected');
+
+        if (failures.length > 0) {
+          const detail = failures
+            .map((f) => {
+              const responseBody = (f.reason as Record<string, unknown>)?.responseBody as
+                | Record<string, unknown>
+                | undefined;
+              const innerError = responseBody?.error as Record<string, unknown> | undefined;
+              const msg = (innerError?.message as string) || (f.reason as Error)?.message || String(f.reason);
+              return `${f.name}: ${msg}`;
+            })
+            .join('; ');
+          throw new Error(detail);
+        }
       }
 
       showSnackbar({
@@ -585,33 +703,60 @@ const ScdGeneralInfoForm: React.FC<ScdGeneralInfoFormProps> = ({
             />
           </Column>
 
-          {/* Contact numbers */}
-          <Column lg={8} md={6} sm={4}>
+          {/* Contact numbers — each phone is paired with the name of its owner.
+              By convention: idx 0 = patient's own phone (no owner needed);
+              idx 1 = Parent/Guardian; idx 2 = Spouse/Partner; idx 3 = Emergency Contact. */}
+          <Column lg={16} md={8} sm={4}>
             <FormGroup legendText={t('contactNumbers', 'Contact Numbers')}>
-              {form.contactNumbers.map((num, idx) => (
-                <div key={idx} className={styles.listRow}>
-                  <TextInput
-                    id={`contact-${idx}`}
-                    labelText=""
-                    hideLabel
-                    value={num}
-                    onChange={(e) => updateContact(idx, e.target.value)}
-                    placeholder={t('phoneNumber', 'Phone number')}
-                    invalid={!!errors.contactNumbers?.[idx]}
-                    invalidText={errors.contactNumbers?.[idx]}
-                  />
-                  <Button
-                    kind="danger--ghost"
-                    size="sm"
-                    renderIcon={TrashCan}
-                    iconDescription={t('remove', 'Remove')}
-                    hasIconOnly
-                    onClick={() => removeContact(idx)}
-                    disabled={form.contactNumbers.length === 1}
-                    className={styles.iconBtn}
-                  />
-                </div>
-              ))}
+              {form.contactNumbers.map((num, idx) => {
+                const ownerName = form.contactOwnerNames?.[idx] ?? '';
+                const ownerLabel =
+                  idx === 0
+                    ? t('patientPhone', 'Patient phone')
+                    : idx === 1
+                      ? t('contact1Name', 'Contact 1 Name')
+                      : idx === 2
+                        ? t('contact2Name', 'Contact 2 Name')
+                        : idx === 3
+                          ? t('contact3Name', 'Contact 3 Name')
+                          : t('ownerName', 'Owner Name');
+                return (
+                  <div key={idx} className={styles.contactPairRow}>
+                    {idx === 0 ? (
+                      <div className={styles.contactPairLabel}>{ownerLabel}</div>
+                    ) : (
+                      <TextInput
+                        id={`contact-owner-${idx}`}
+                        labelText=""
+                        hideLabel
+                        value={ownerName}
+                        onChange={(e) => updateOwnerName(idx, e.target.value)}
+                        placeholder={ownerLabel}
+                      />
+                    )}
+                    <TextInput
+                      id={`contact-${idx}`}
+                      labelText=""
+                      hideLabel
+                      value={num}
+                      onChange={(e) => updateContact(idx, e.target.value)}
+                      placeholder={t('phoneNumber', 'Phone number')}
+                      invalid={!!errors.contactNumbers?.[idx]}
+                      invalidText={errors.contactNumbers?.[idx]}
+                    />
+                    <Button
+                      kind="danger--ghost"
+                      size="sm"
+                      renderIcon={TrashCan}
+                      iconDescription={t('remove', 'Remove')}
+                      hasIconOnly
+                      onClick={() => removeContact(idx)}
+                      disabled={form.contactNumbers.length === 1}
+                      className={styles.iconBtn}
+                    />
+                  </div>
+                );
+              })}
               <Button kind="ghost" size="sm" renderIcon={Add} onClick={addContact} className={styles.addBtn}>
                 {t('addContact', 'Add contact number')}
               </Button>
@@ -740,9 +885,9 @@ const ScdGeneralInfoForm: React.FC<ScdGeneralInfoFormProps> = ({
                   invalidText={errors.siblings?.[idx]?.testResult}
                 >
                   <SelectItem value="" text={t('select', 'Select...')} />
-                  <SelectItem value="NA" text="NA" />
-                  <SelectItem value="negative" text={t('negative', 'Negative')} />
-                  <SelectItem value="positive" text={t('positive', 'Positive')} />
+                  <SelectItem value="AA" text={t('resultAA', 'AA - Healthy Person')} />
+                  <SelectItem value="AS" text={t('resultAS', 'AS - Carrier')} />
+                  <SelectItem value="SS" text={t('resultSS', 'SS - Sickle Cell')} />
                 </Select>
               </Column>
               <Column lg={4} md={4} sm={4}>
@@ -764,57 +909,54 @@ const ScdGeneralInfoForm: React.FC<ScdGeneralInfoFormProps> = ({
       {/* ── KEY DATES ────────────────────────────────────────────────── */}
       <Tile className={styles.section}>
         <h4 className={styles.sectionTitle}>{t('keyDates', 'Key Dates')}</h4>
-        <Grid narrow>
-          <Column lg={4} md={4} sm={4}>
-            <DatePicker
-              datePickerType="single"
-              dateFormat="Y-m-d"
-              value={form.dateOfScdDiagnosis}
-              onChange={(_, dateStr) => setField('dateOfScdDiagnosis', dateStr)}
-            >
-              <DatePickerInput
-                id="scd-diagnosis-date"
-                labelText={t('dateOfScdDiagnosis', 'Date of SCD Diagnosis')}
-                placeholder="YYYY-MM-DD"
-                size="md"
-                invalid={!!errors.dateOfScdDiagnosis}
-                invalidText={errors.dateOfScdDiagnosis}
-              />
-            </DatePicker>
-          </Column>
-          <Column lg={4} md={4} sm={4}>
-            <DatePicker
-              datePickerType="single"
-              dateFormat="Y-m-d"
-              value={form.dateOfSsuuboCareEnrollment}
-              onChange={(_, dateStr) => setField('dateOfSsuuboCareEnrollment', dateStr)}
-            >
-              <DatePickerInput
-                id="ssuubo-enrollment-date"
-                labelText={t('dateOfSsuuboCareEnrollment', 'Date of SSUUBO Care Enrollment')}
-                placeholder="YYYY-MM-DD"
-                size="md"
-                invalid={!!errors.dateOfSsuuboCareEnrollment}
-                invalidText={errors.dateOfSsuuboCareEnrollment}
-              />
-            </DatePicker>
-          </Column>
-          <Column lg={4} md={4} sm={4}>
-            <DatePicker
-              datePickerType="single"
-              dateFormat="Y-m-d"
-              value={form.pcvVaccinationDate}
-              onChange={(_, dateStr) => setField('pcvVaccinationDate', dateStr)}
-            >
-              <DatePickerInput
-                id="pcv-vaccination-date"
-                labelText={t('pcvVaccinationDate', 'PCV Vaccination Date')}
-                placeholder="YYYY-MM-DD"
-                size="md"
-              />
-            </DatePicker>
-          </Column>
-        </Grid>
+        <div className={styles.keyDatesRow}>
+          <DatePicker
+            datePickerType="single"
+            dateFormat="Y-m-d"
+            value={form.dateOfScdDiagnosis}
+            onChange={(_, dateStr) => setField('dateOfScdDiagnosis', dateStr)}
+            className={styles.keyDateField}
+          >
+            <DatePickerInput
+              id="scd-diagnosis-date"
+              labelText={t('dateOfScdDiagnosis', 'Date of SCD Diagnosis')}
+              placeholder="YYYY-MM-DD"
+              size="md"
+              invalid={!!errors.dateOfScdDiagnosis}
+              invalidText={errors.dateOfScdDiagnosis}
+            />
+          </DatePicker>
+          <DatePicker
+            datePickerType="single"
+            dateFormat="Y-m-d"
+            value={form.dateOfSsuuboCareEnrollment}
+            onChange={(_, dateStr) => setField('dateOfSsuuboCareEnrollment', dateStr)}
+            className={styles.keyDateField}
+          >
+            <DatePickerInput
+              id="ssuubo-enrollment-date"
+              labelText={t('dateOfSsuuboCareEnrollment', 'Date of SSUUBO Care Enrollment')}
+              placeholder="YYYY-MM-DD"
+              size="md"
+              invalid={!!errors.dateOfSsuuboCareEnrollment}
+              invalidText={errors.dateOfSsuuboCareEnrollment}
+            />
+          </DatePicker>
+          <DatePicker
+            datePickerType="single"
+            dateFormat="Y-m-d"
+            value={form.pcvVaccinationDate}
+            onChange={(_, dateStr) => setField('pcvVaccinationDate', dateStr)}
+            className={styles.keyDateField}
+          >
+            <DatePickerInput
+              id="pcv-vaccination-date"
+              labelText={t('pcvVaccinationDate', 'PCV Vaccination Date')}
+              placeholder="YYYY-MM-DD"
+              size="md"
+            />
+          </DatePicker>
+        </div>
       </Tile>
 
       {/* ── TREATMENTS ───────────────────────────────────────────────── */}

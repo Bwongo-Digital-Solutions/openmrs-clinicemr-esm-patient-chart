@@ -3,7 +3,7 @@ export interface Sibling {
   name: string;
   yearOfBirth: string;
   testedForScd: 'yes' | 'no' | '';
-  testResult: 'NA' | 'negative' | 'positive' | '';
+  testResult: 'Health Person - AA' | 'Carrier - AS' | 'Sickle Cell Disease - SS' | '';
   ssuuboNo: string;
 }
 
@@ -29,6 +29,12 @@ export interface ScdPatientGeneralInfo {
   deathDate: string;
   address: string;
   contactNumbers: string[];
+  /**
+   * Owner name for each phone number at the same index.
+   * Index 0 corresponds to the patient's primary phone (usually blank).
+   * Indices 1-3 correspond to Parent/Guardian, Spouse/Partner and Emergency Contact respectively.
+   */
+  contactOwnerNames: string[];
   comments: string;
   photographyUrl: string;
   photographyFile: File | null;
@@ -70,6 +76,7 @@ export const initialFormState: ScdPatientGeneralInfo = {
   deathDate: '',
   address: '',
   contactNumbers: [''],
+  contactOwnerNames: [''],
   comments: '',
   photographyUrl: '',
   photographyFile: null,

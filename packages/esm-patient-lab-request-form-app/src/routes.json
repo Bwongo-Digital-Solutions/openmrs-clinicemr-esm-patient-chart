@@ -1,0 +1,28 @@
+{
+  "$schema": "https://json.openmrs.org/routes.schema.json",
+  "backendDependencies": {
+    "webservices.rest": ">=2.2.0"
+  },
+  "extensions": [
+    {
+      "name": "lab-request-form-workspace",
+      "component": "labRequestFormWorkspace",
+      "slot": "patient-chart-workspace-slot"
+    },
+    {
+      "name": "lab-request-form-dashboard",
+      "component": "labRequestForm",
+      "slot": "patient-chart-summary-dashboard-slot",
+      "meta": {
+        "title": "Lab Request"
+      },
+      "order": 15
+    },
+    {
+      "name": "lab-request-action-button",
+      "component": "labRequestActionButton",
+      "slot": "action-menu-patient-chart-items-slot",
+      "order": 5
+    }
+  ]
+}

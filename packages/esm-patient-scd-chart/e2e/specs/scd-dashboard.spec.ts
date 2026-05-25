@@ -124,7 +124,7 @@ test.describe('SCD Patient Dashboard', () => {
       name: 'Sibling One',
       yearOfBirth: '2010',
       testedForScd: 'yes',
-      testResult: 'negative',
+      testResult: 'AA',
       ssuuboNo: 'SSUUBO001',
     });
 
@@ -147,7 +147,7 @@ test.describe('SCD Patient Dashboard', () => {
     expect(siblingOne).toBeTruthy();
     expect(siblingOne?.yearOfBirth).toBe('2010');
     expect(siblingOne?.tested).toBe('yes');
-    expect(siblingOne?.result).toBe('negative');
+    expect(siblingOne?.result).toBe('AA - Healthy Person');
     expect(siblingOne?.ssuuboNo).toBe('SSUUBO001');
 
     const siblingTwo = siblings.find((s) => s.name === 'Sibling Two');

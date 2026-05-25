@@ -1,0 +1,12 @@
+{
+  "myRegisteredPatients": "My Registered Patients",
+  "noPatientsRegistered": "You haven't registered any patients yet.",
+  "redirecting": "Redirecting…",
+  "patientName": "Name",
+  "identifier": "Identifier",
+  "gender": "Gender",
+  "age": "Age",
+  "registeredOn": "Registered on",
+  "openChart": "Open chart",
+  "errorLoading": "Could not load patients you've registered."
+}

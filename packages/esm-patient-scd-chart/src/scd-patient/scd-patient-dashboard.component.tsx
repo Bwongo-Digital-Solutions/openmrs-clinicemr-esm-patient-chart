@@ -13,7 +13,7 @@ import {
   InlineNotification,
   SkeletonText,
 } from '@carbon/react';
-import { Edit, UserAvatar, Calendar, Phone, Medication, Stethoscope } from '@carbon/icons-react';
+import { Edit, Printer, UserAvatar, Calendar, Phone, Medication, Stethoscope } from '@carbon/icons-react';
 import { useTranslation } from 'react-i18next';
 import { useConfig, navigate } from '@openmrs/esm-framework';
 import { type ScdPatientGeneralInfo, initialFormState } from './types';
@@ -24,6 +24,7 @@ import {
   usePatientDemographics,
   usePersonDetails,
   useEmergencyContacts,
+  usePatientPhoto,
 } from './scd-patient.resource';
 import ScdGeneralInfoForm from './scd-general-info-form.component';
 import styles from './scd-patient-dashboard.scss';
@@ -52,6 +53,18 @@ const ScdPatientDashboard: React.FC<ScdPatientDashboardProps> = ({ patientUuid: 
     }
   };
 
+  const handlePrint = () => {
+    // Briefly tag <html> so our @media print rules can scope to the dashboard
+    // only, hiding the surrounding OpenMRS shell (top nav, side nav, etc.).
+    document.documentElement.classList.add('scd-print-mode');
+    // Fire print on the next frame so the class lands before the browser
+    // snapshots the page for printing.
+    requestAnimationFrame(() => {
+      window.print();
+      document.documentElement.classList.remove('scd-print-mode');
+    });
+  };
+
   const {
     encounter,
     isLoading: isLoadingEncounter,
@@ -70,8 +83,17 @@ const ScdPatientDashboard: React.FC<ScdPatientDashboardProps> = ({ patientUuid: 
     config.registrationEncounterTypeUuid,
     config.emergencyContactConcepts,
   );
+  const { photographyUrl: storedPhotoUrl } = usePatientPhoto(patientUuid ?? '');
   const [patientData, setPatientData] = useState<ScdPatientGeneralInfo | null>(null);
   const [editMode, setEditMode] = useState(false);
+  // Tracks whether the <img> failed to load (e.g. attachment endpoint returned
+  // 404 or auth error). When true the photo frame falls back to the avatar.
+  const [photoFailed, setPhotoFailed] = useState(false);
+  // Reset the failure flag whenever the source URL changes so a freshly
+  // uploaded photo gets retried instead of staying stuck on the fallback.
+  useEffect(() => {
+    setPhotoFailed(false);
+  }, [storedPhotoUrl]);
 
   // Stable string deps from config so effect re-runs when config finishes loading
   const diagnosisUuid = config.conceptUuids?.dateOfScdDiagnosis ?? '';
@@ -92,6 +114,7 @@ const ScdPatientDashboard: React.FC<ScdPatientDashboardProps> = ({ patientUuid: 
         deathDate: personDeathDate || (prev ?? initialFormState).deathDate,
         contactNumbers:
           personContactNumbers.length > 0 ? personContactNumbers : (prev ?? initialFormState).contactNumbers,
+        photographyUrl: storedPhotoUrl || (prev ?? initialFormState).photographyUrl,
       }));
     }
   }, [
@@ -101,6 +124,7 @@ const ScdPatientDashboard: React.FC<ScdPatientDashboardProps> = ({ patientUuid: 
     personAddress,
     personDeathDate,
     personContactNumbers,
+    storedPhotoUrl,
     diagnosisUuid,
     enrollmentUuid,
     pcvUuid,
@@ -192,9 +216,14 @@ const ScdPatientDashboard: React.FC<ScdPatientDashboardProps> = ({ patientUuid: 
           <h2 className={styles.dashboardTitle}>{t('scdDashboard', 'SCD Patient Dashboard')}</h2>
           <p className={styles.dashboardSubtitle}>{t('sheetOneLabel', 'Sheet 1 – General Information')}</p>
         </div>
-        <Button kind="secondary" size="sm" renderIcon={Edit} onClick={() => setEditMode(true)}>
-          {t('editInfo', 'Edit Information')}
-        </Button>
+        <div className={styles.headerActions}>
+          <Button kind="tertiary" size="sm" renderIcon={Printer} onClick={handlePrint} disabled={!patientData}>
+            {t('print', 'Print')}
+          </Button>
+          <Button kind="secondary" size="sm" renderIcon={Edit} onClick={() => setEditMode(true)}>
+            {t('editInfo', 'Edit Information')}
+          </Button>
+        </div>
       </div>
 
       {!patientData && (
@@ -212,11 +241,13 @@ const ScdPatientDashboard: React.FC<ScdPatientDashboardProps> = ({ patientUuid: 
           <Column lg={4} md={8} sm={4}>
             <Tile className={`${styles.card} ${styles.heroCard}`}>
               <div className={styles.photoFrame}>
-                {patientData.photographyUrl ? (
+                {patientData.photographyUrl && !photoFailed ? (
                   <img
+                    key={patientData.photographyUrl}
                     src={patientData.photographyUrl}
                     alt={t('patientPhoto', 'Patient photo')}
                     className={styles.patientPhoto}
+                    onError={() => setPhotoFailed(true)}
                   />
                 ) : (
                   <div className={styles.photoFallback}>
@@ -259,7 +290,7 @@ const ScdPatientDashboard: React.FC<ScdPatientDashboardProps> = ({ patientUuid: 
                 {emergencyContacts.map((ec, i) => (
                   <React.Fragment key={i}>
                     <dt>{ec.label}</dt>
-                    <dd>{ec.phone}</dd>
+                    <dd>{ec.ownerName ? `${ec.ownerName}${ec.phone ? ' — ' + ec.phone : ''}` : ec.phone || '—'}</dd>
                   </React.Fragment>
                 ))}
               </dl>
@@ -349,15 +380,23 @@ const ScdPatientDashboard: React.FC<ScdPatientDashboardProps> = ({ patientUuid: 
                           {sibling.testResult ? (
                             <Tag
                               type={
-                                sibling.testResult === 'positive'
-                                  ? 'red'
-                                  : sibling.testResult === 'negative'
-                                    ? 'green'
-                                    : 'gray'
+                                sibling.testResult === 'AA' || sibling.testResult === 'negative'
+                                  ? 'green'
+                                  : sibling.testResult === 'AS'
+                                    ? 'teal'
+                                    : sibling.testResult === 'SS' || sibling.testResult === 'positive'
+                                      ? 'red'
+                                      : 'gray'
                               }
                               size="sm"
                             >
-                              {sibling.testResult}
+                              {sibling.testResult === 'AA'
+                                ? 'AA - Healthy Person'
+                                : sibling.testResult === 'AS'
+                                  ? 'AS - Carrier'
+                                  : sibling.testResult === 'SS'
+                                    ? 'SS - Sickle Cell'
+                                    : sibling.testResult}
                             </Tag>
                           ) : (
                             '—'

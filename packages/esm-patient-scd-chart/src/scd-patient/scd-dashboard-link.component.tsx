@@ -1,6 +1,7 @@
 import React from 'react';
 import { BrowserRouter, NavLink } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
+import { HealthCross } from '@carbon/react/icons';
 import { scdDashboardMeta } from '../dashboard.meta';
 
 interface ScdDashboardLinkProps {
@@ -20,6 +21,7 @@ const ScdDashboardLink: React.FC<ScdDashboardLinkProps> = ({ basePath }) => {
         }
         end
       >
+        <HealthCross className="cds--side-nav__icon" size={20} />
         <span className="cds--side-nav__link-text">{t('scdGeneralInfo', scdDashboardMeta.title)}</span>
       </NavLink>
     </BrowserRouter>

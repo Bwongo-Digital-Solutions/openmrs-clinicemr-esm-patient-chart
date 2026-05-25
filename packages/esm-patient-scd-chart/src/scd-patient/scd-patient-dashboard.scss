@@ -245,3 +245,97 @@
   font-style: italic;
   margin: 0;
 }
+
+// ── Header actions (Edit / Print buttons) ─────────────────────────────
+.headerActions {
+  display: flex;
+  align-items: center;
+  gap: layout.$spacing-03;
+  flex-wrap: wrap;
+}
+
+// ── Print styles ──────────────────────────────────────────────────────
+// We toggle `.scd-print-mode` on <html> right before invoking
+// `window.print()`, then remove it after the print dialog closes. While the
+// class is on, we hide every node *except* the dashboard wrapper and its
+// descendants, then reposition the wrapper to occupy the full page so the
+// surrounding OpenMRS shell (top-nav, side-nav, patient banner, etc.) is
+// not printed.
+@media print {
+  :global(html.scd-print-mode),
+  :global(html.scd-print-mode body) {
+    margin: 0 !important;
+    padding: 0 !important;
+    background: #fff !important;
+  }
+
+  // Hide everything by default…
+  :global(html.scd-print-mode body *) {
+    visibility: hidden !important;
+  }
+
+  // …then unhide the dashboard subtree.
+  :global(html.scd-print-mode) .dashboardWrapper,
+  :global(html.scd-print-mode) .dashboardWrapper * {
+    visibility: visible !important;
+  }
+
+  // Pop the dashboard out of the shell layout so it fills the printable area.
+  :global(html.scd-print-mode) .dashboardWrapper {
+    position: absolute !important;
+    inset: 0 !important;
+    width: 100% !important;
+    max-width: none !important;
+    margin: 0 !important;
+    padding: 16mm 14mm !important;
+    background: #fff !important;
+    color: colors.$gray-100 !important;
+    box-shadow: none !important;
+  }
+
+  // Hide non-content controls inside the dashboard.
+  :global(html.scd-print-mode) .backNav,
+  :global(html.scd-print-mode) .headerActions {
+    display: none !important;
+  }
+
+  // Make the title fit the print page.
+  :global(html.scd-print-mode) .dashboardHeader {
+    margin-bottom: layout.$spacing-05 !important;
+    padding-bottom: layout.$spacing-04 !important;
+    border-bottom: 1.5pt solid colors.$blue-70 !important;
+  }
+
+  // Avoid awkward page breaks mid-card and let colored tags / cards print
+  // with their backgrounds.
+  :global(html.scd-print-mode) .card,
+  :global(html.scd-print-mode) .diagnosisCard,
+  :global(html.scd-print-mode) .treatmentItem {
+    page-break-inside: avoid;
+    break-inside: avoid;
+    box-shadow: none !important;
+  }
+
+  // Force chrome/webkit/edge to print backgrounds & colored tags.
+  :global(html.scd-print-mode) * {
+    -webkit-print-color-adjust: exact !important;
+    print-color-adjust: exact !important;
+  }
+
+  // Tighten card padding for paper.
+  :global(html.scd-print-mode) .card {
+    padding: layout.$spacing-04 !important;
+    border: 1px solid colors.$gray-30 !important;
+  }
+
+  // Stack columns vertically on print for readability on A4.
+  :global(html.scd-print-mode) .dashboardGrid {
+    display: block !important;
+  }
+  :global(html.scd-print-mode) .dashboardGrid > * {
+    width: 100% !important;
+    max-width: 100% !important;
+    flex: 0 0 100% !important;
+    margin: 0 0 layout.$spacing-05 0 !important;
+  }
+}

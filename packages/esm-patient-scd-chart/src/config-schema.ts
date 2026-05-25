@@ -48,6 +48,21 @@ export const configSchema = {
       _default: '',
       _description: 'Concept UUID for Emergency Contact phone number (Text type).',
     },
+    parentGuardianName: {
+      _type: Type.UUID,
+      _default: '',
+      _description: 'Concept UUID for Parent/Guardian name (Text type).',
+    },
+    spousePartnerName: {
+      _type: Type.UUID,
+      _default: '',
+      _description: 'Concept UUID for Spouse/Partner name (Text type).',
+    },
+    emergencyContactName: {
+      _type: Type.UUID,
+      _default: '',
+      _description: 'Concept UUID for Emergency Contact name (Text type).',
+    },
   },
 
   // ── Concept UUIDs ───────────────────────────────────────────────────
@@ -254,6 +269,9 @@ export type EmergencyContactConcepts = {
   parentGuardianPhone: string;
   spousePartnerPhone: string;
   emergencyContactPhone: string;
+  parentGuardianName: string;
+  spousePartnerName: string;
+  emergencyContactName: string;
 };
 
 export type Config = {

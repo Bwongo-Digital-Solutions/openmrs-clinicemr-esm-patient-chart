@@ -1,0 +1,23 @@
+{
+  "$schema": "https://json.openmrs.org/routes.schema.json",
+  "backendDependencies": {
+    "webservices.rest": ">=2.2.0"
+  },
+  "pages": [
+    {
+      "component": "postRegistrationRedirect",
+      "route": "post-registration"
+    },
+    {
+      "component": "myRegisteredPatients",
+      "route": "my-registered-patients"
+    }
+  ],
+  "extensions": [
+    {
+      "name": "registration-clerk-lockdown",
+      "component": "registrationClerkLockdown",
+      "slot": "top-nav-actions-slot"
+    }
+  ]
+}

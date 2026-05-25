@@ -156,6 +156,33 @@
   margin: 0 0 layout.$spacing-05 0;
 }
 
+.keyDatesRow {
+  display: flex;
+  flex-wrap: wrap;
+  gap: layout.$spacing-07;
+  align-items: flex-start;
+}
+
+.keyDateField {
+  flex: 1 1 220px;
+  min-width: 220px;
+}
+
+.contactPairRow {
+  display: grid;
+  grid-template-columns: 1fr 1fr auto;
+  gap: layout.$spacing-04;
+  align-items: end;
+  margin-bottom: layout.$spacing-03;
+}
+
+.contactPairLabel {
+  @include type.type-style('label-01');
+  color: colors.$gray-70;
+  align-self: center;
+  padding-bottom: layout.$spacing-03;
+}
+
 .listRow {
   display: flex;
   align-items: flex-end;

@@ -1,4 +1,9 @@
-import { fhirBaseUrl, openmrsFetch, restBaseUrl } from '@openmrs/esm-framework';
+import {
+  fhirBaseUrl,
+  openmrsFetch,
+  restBaseUrl,
+  usePatientPhoto as useFrameworkPatientPhoto,
+} from '@openmrs/esm-framework';
 import useSWR from 'swr';
 import type { ScdPatientGeneralInfo, DiagnosisKey } from './types';
 import type { ScdConceptUuids } from '../config-schema';
@@ -85,8 +90,12 @@ export function buildObsPayload(formData: ScdPatientGeneralInfo, c: ScdConceptUu
   if (c.pcvVaccinationDate) all.push(dateObs(c.pcvVaccinationDate, formData.pcvVaccinationDate));
 
   // Treatment groups
+  // The *Enabled concepts on the server are TEXT ("true"/"false"); sending a JSON
+  // boolean here causes OpenMRS to reject the obs with `error.noValue`.
   if (c.hydroxyureaGroup && c.hydroxyureaEnabled) {
-    const members: Array<ReturnType<typeof obs> | null> = [boolObs(c.hydroxyureaEnabled, formData.hydroxyureaEnabled)];
+    const members: Array<ReturnType<typeof obs> | null> = [
+      textObs(c.hydroxyureaEnabled, formData.hydroxyureaEnabled ? 'true' : 'false'),
+    ];
     if (formData.hydroxyureaEnabled) {
       if (c.hydroxyureaStartDate) members.push(dateObs(c.hydroxyureaStartDate, formData.hydroxyureaStartDate));
       if (c.hydroxyureaStopDate) members.push(dateObs(c.hydroxyureaStopDate, formData.hydroxyureaStopDate));
@@ -96,7 +105,7 @@ export function buildObsPayload(formData: ScdPatientGeneralInfo, c: ScdConceptUu
 
   if (c.chronicTransfusionGroup && c.chronicTransfusionEnabled) {
     const members: Array<ReturnType<typeof obs> | null> = [
-      boolObs(c.chronicTransfusionEnabled, formData.chronicTransfusionEnabled),
+      textObs(c.chronicTransfusionEnabled, formData.chronicTransfusionEnabled ? 'true' : 'false'),
     ];
     if (formData.chronicTransfusionEnabled) {
       if (c.chronicTransfusionStartDate)
@@ -109,7 +118,7 @@ export function buildObsPayload(formData: ScdPatientGeneralInfo, c: ScdConceptUu
 
   if (c.physiotherapyGroup && c.physiotherapyEnabled) {
     const members: Array<ReturnType<typeof obs> | null> = [
-      boolObs(c.physiotherapyEnabled, formData.physiotherapyEnabled),
+      textObs(c.physiotherapyEnabled, formData.physiotherapyEnabled ? 'true' : 'false'),
     ];
     if (formData.physiotherapyEnabled) {
       if (c.physiotherapyStartDate) members.push(dateObs(c.physiotherapyStartDate, formData.physiotherapyStartDate));
@@ -221,6 +230,7 @@ export async function saveScdEncounter(
 // ── Save address + death date to person record ──────────────────────
 export async function savePersonDetails(patientUuid: string, address: string, deathDate: string): Promise<void> {
   const headers = { 'Content-Type': 'application/json' };
+  const trimmedAddress = (address ?? '').trim();
 
   // 1. Sync dead / deathDate on the core person record (non-fatal: some OpenMRS configs
   //    reject partial person updates that lack required fields like names/gender)
@@ -235,7 +245,10 @@ export async function savePersonDetails(patientUuid: string, address: string, de
     /* non-fatal */
   });
 
-  // 2. Sync address1 on the preferred person address
+  // 2. Sync address1 on the preferred person address. We deliberately *don't*
+  //    overwrite the existing address with an empty value — that would wipe the
+  //    address the patient set during registration if the form happened to load
+  //    with an empty string (e.g. a slow person/details fetch).
   const personRes = await openmrsFetch<{ addresses: Array<{ uuid: string; address1?: string; preferred?: boolean }> }>(
     `${restBaseUrl}/person/${patientUuid}?v=custom:(addresses:(uuid,address1,preferred))`,
   );
@@ -244,28 +257,133 @@ export async function savePersonDetails(patientUuid: string, address: string, de
       ?.addresses ?? [];
   const existing = addresses.find((a) => a.preferred) ?? addresses[0];
 
+  if (!trimmedAddress) {
+    // Nothing meaningful to save; preserve whatever address the patient already has.
+    return;
+  }
+
   if (existing?.uuid) {
+    // Skip the POST entirely if the value hasn't changed — avoids OpenMRS' occasional
+    // `error.noValue` when re-posting an unchanged address resource.
+    if ((existing.address1 ?? '').trim() === trimmedAddress) return;
     await openmrsFetch(`${restBaseUrl}/person/${patientUuid}/address/${existing.uuid}`, {
       method: 'POST',
       headers,
-      body: JSON.stringify({ address1: address }),
+      body: JSON.stringify({ address1: trimmedAddress }),
     });
-  } else if (address) {
+  } else {
     await openmrsFetch(`${restBaseUrl}/person/${patientUuid}/address`, {
       method: 'POST',
       headers,
-      body: JSON.stringify({ address1: address, preferred: true }),
+      body: JSON.stringify({ address1: trimmedAddress, preferred: true }),
     });
   }
 }
 
+// ── Save emergency contacts back to registration encounter obs ────────
+// Patient registration writes Parent/Guardian, Spouse/Partner and Emergency
+// Contact phone numbers as flat obs on the registration encounter. The SCD
+// dashboard reads them from there. To keep both views consistent when the
+// user edits contacts in the SCD form, mirror those values back here.
+export async function saveEmergencyContactObs(
+  patientUuid: string,
+  registrationEncounterTypeUuid: string,
+  conceptUuids: {
+    parentGuardianPhone?: string;
+    spousePartnerPhone?: string;
+    emergencyContactPhone?: string;
+    parentGuardianName?: string;
+    spousePartnerName?: string;
+    emergencyContactName?: string;
+  },
+  values: {
+    parentGuardianPhone?: string;
+    spousePartnerPhone?: string;
+    emergencyContactPhone?: string;
+    parentGuardianName?: string;
+    spousePartnerName?: string;
+    emergencyContactName?: string;
+  },
+): Promise<void> {
+  if (!patientUuid || !registrationEncounterTypeUuid) return;
+  const headers = { 'Content-Type': 'application/json' };
+
+  // Find the most recent registration encounter for this patient.
+  const encRes = await openmrsFetch<{
+    results: Array<{ uuid: string; obs?: Array<{ uuid: string; concept?: { uuid: string }; value?: unknown }> }>;
+  }>(
+    `${restBaseUrl}/encounter?patient=${patientUuid}&encounterType=${registrationEncounterTypeUuid}` +
+      `&v=custom:(uuid,obs:(uuid,concept:(uuid),value))&limit=1&order=desc`,
+  );
+  const encounter = (
+    encRes.data as unknown as {
+      results: Array<{ uuid: string; obs?: Array<{ uuid: string; concept?: { uuid: string }; value?: unknown }> }>;
+    }
+  )?.results?.[0];
+  if (!encounter?.uuid) return; // No registration encounter to update.
+
+  const targets: Array<[keyof typeof conceptUuids, string]> = [
+    ['parentGuardianPhone', (values.parentGuardianPhone ?? '').trim()],
+    ['spousePartnerPhone', (values.spousePartnerPhone ?? '').trim()],
+    ['emergencyContactPhone', (values.emergencyContactPhone ?? '').trim()],
+    ['parentGuardianName', (values.parentGuardianName ?? '').trim()],
+    ['spousePartnerName', (values.spousePartnerName ?? '').trim()],
+    ['emergencyContactName', (values.emergencyContactName ?? '').trim()],
+  ];
+
+  await Promise.all(
+    targets.map(async ([field, newValue]) => {
+      const conceptUuid = conceptUuids[field];
+      if (!conceptUuid || !isUuid(conceptUuid)) return;
+      const existing = (encounter.obs ?? []).find((o) => o.concept?.uuid === conceptUuid);
+      if (newValue) {
+        if (existing) {
+          // POST updates the obs value in place.
+          await openmrsFetch(`${restBaseUrl}/obs/${existing.uuid}`, {
+            method: 'POST',
+            headers,
+            body: JSON.stringify({ value: newValue }),
+          }).catch(() => {
+            /* non-fatal */
+          });
+        } else {
+          await openmrsFetch(`${restBaseUrl}/obs`, {
+            method: 'POST',
+            headers,
+            body: JSON.stringify({
+              person: patientUuid,
+              concept: conceptUuid,
+              value: newValue,
+              encounter: encounter.uuid,
+              obsDatetime: new Date().toISOString(),
+            }),
+          }).catch(() => {
+            /* non-fatal */
+          });
+        }
+      } else if (existing) {
+        // Cleared by user — void the obs.
+        await openmrsFetch(`${restBaseUrl}/obs/${existing.uuid}`, { method: 'DELETE' }).catch(() => {
+          /* non-fatal */
+        });
+      }
+    }),
+  );
+}
+
 // ── Save contact numbers as person attributes ─────────────────────────
-// OpenMRS enforces one attribute per type per person, so all numbers are
-// stored as a single JSON-serialised array in one Telephone Number attribute.
+// Only the first (primary) phone is stored on the Telephone Number person
+// attribute — the underlying `person_attribute.value` column is varchar(255)
+// and easily overflows when several numbers are concatenated. The remaining
+// numbers live on the registration encounter as Parent/Guardian, Spouse/
+// Partner and Emergency Contact obs (see `saveEmergencyContactObs`).
 export async function saveContactNumbers(patientUuid: string, phoneNumbers: string[]): Promise<void> {
   const headers = { 'Content-Type': 'application/json' };
-  const nonEmpty = phoneNumbers.filter(Boolean);
-  const jsonValue = JSON.stringify(nonEmpty);
+  const nonEmpty = phoneNumbers
+    .filter(Boolean)
+    .map((p) => p.trim())
+    .filter(Boolean);
+  const primary = (nonEmpty[0] ?? '').slice(0, 250); // safety cap well under the 255 char limit
 
   const res = await openmrsFetch<{ results: Array<{ uuid: string; value: string; attributeType: { uuid: string } }> }>(
     `${restBaseUrl}/person/${patientUuid}/attribute?v=full`,
@@ -276,24 +394,34 @@ export async function saveContactNumbers(patientUuid: string, phoneNumbers: stri
   const existing = allAttrs.filter((a) => a.attributeType?.uuid === TELEPHONE_NUMBER_ATTRIBUTE_TYPE);
 
   if (existing.length > 0) {
-    // Update the first attribute with the JSON array; void any extras
-    await openmrsFetch(`${restBaseUrl}/person/${patientUuid}/attribute/${existing[0].uuid}`, {
-      method: 'POST',
-      headers,
-      body: JSON.stringify({ value: jsonValue }),
-    });
+    if (primary) {
+      await openmrsFetch(`${restBaseUrl}/person/${patientUuid}/attribute/${existing[0].uuid}`, {
+        method: 'POST',
+        headers,
+        body: JSON.stringify({ value: primary }),
+      });
+    } else {
+      // Primary cleared — void it.
+      await openmrsFetch(`${restBaseUrl}/person/${patientUuid}/attribute/${existing[0].uuid}`, {
+        method: 'DELETE',
+      }).catch(() => {
+        /* non-fatal */
+      });
+    }
+    // Void any duplicate attributes that may have been left behind by older
+    // versions of this code (which used to write JSON arrays + extra rows).
     await Promise.all(
-      existing
-        .slice(1)
-        .map((attr) =>
-          openmrsFetch(`${restBaseUrl}/person/${patientUuid}/attribute/${attr.uuid}`, { method: 'DELETE' }),
-        ),
+      existing.slice(1).map((attr) =>
+        openmrsFetch(`${restBaseUrl}/person/${patientUuid}/attribute/${attr.uuid}`, { method: 'DELETE' }).catch(() => {
+          /* non-fatal */
+        }),
+      ),
     );
-  } else if (nonEmpty.length > 0) {
+  } else if (primary) {
     await openmrsFetch(`${restBaseUrl}/person/${patientUuid}/attribute`, {
       method: 'POST',
       headers,
-      body: JSON.stringify({ attributeType: TELEPHONE_NUMBER_ATTRIBUTE_TYPE, value: jsonValue }),
+      body: JSON.stringify({ attributeType: TELEPHONE_NUMBER_ATTRIBUTE_TYPE, value: primary }),
     });
   }
 }
@@ -345,11 +473,63 @@ export async function uploadPatientPhoto(patientUuid: string, file: File): Promi
   formPayload.append('file', file);
   formPayload.append('fileCaption', 'SCD patient photo');
 
-  const response = await openmrsFetch<{ url: string }>(`${restBaseUrl}/attachment`, {
-    method: 'POST',
-    body: formPayload,
-  });
-  return response.data?.url ?? '';
+  const response = await openmrsFetch<{ url?: string; bytesContentFamily?: string; uuid?: string }>(
+    `${restBaseUrl}/attachment`,
+    {
+      method: 'POST',
+      body: formPayload,
+    },
+  );
+  // The OpenMRS attachment API returns the bytes URL when available; otherwise
+  // construct it from the attachment UUID so the form can preview the new image.
+  const url =
+    response.data?.url || (response.data?.uuid ? `${restBaseUrl}/attachment/${response.data.uuid}/bytes` : '');
+  return url;
+}
+
+// ── Load latest patient photo URL ────────────────────────────────────────
+// Photos can land in two different places depending on which UI uploaded them:
+//
+//   1. The OpenMRS Patient Registration form saves the photo as an
+//      observation against the configured "Patient Photo" concept. The
+//      framework's `usePatientPhoto` hook (used by the patient banner) reads
+//      from `/ws/rest/v1/obs?patient=…&concept=…`.
+//
+//   2. The SCD form uploads photos via the generic `/ws/rest/v1/attachment`
+//      endpoint, which stores them as patient attachments – they don't show
+//      up in the obs/concept lookup.
+//
+// To make the SCD dashboard mirror what the patient banner shows (and to keep
+// SCD-uploaded photos working), we consult the framework hook first and only
+// fall back to the attachments endpoint if no obs-based photo exists.
+export function usePatientPhoto(patientUuid: string) {
+  // 1. Obs-based lookup (registration photo).
+  const { data: frameworkPhoto, isLoading: frameworkLoading } = useFrameworkPatientPhoto(patientUuid ?? '');
+
+  // 2. Attachment-based fallback (SCD form upload).
+  //    Skip the request entirely when we already have an obs-based photo to
+  //    avoid an unnecessary round-trip on every dashboard render.
+  const shouldQueryAttachments = Boolean(patientUuid) && !frameworkPhoto?.imageSrc;
+  const attachmentsUrl = shouldQueryAttachments ? `${restBaseUrl}/attachment?patient=${patientUuid}` : null;
+
+  const { data: attachmentsResponse, isLoading: attachmentsLoading } = useSWR<{
+    data: {
+      results: Array<{ uuid: string; bytesMimeType?: string; dateTime?: string; comment?: string }>;
+    };
+  }>(attachmentsUrl, openmrsFetch);
+
+  const allAttachments = attachmentsResponse?.data?.results ?? [];
+  // Most recent image first; fall back to most recent attachment of any type.
+  const sortedAttachments = [...allAttachments].sort((a, b) => (b.dateTime ?? '').localeCompare(a.dateTime ?? ''));
+  const latestAttachment =
+    sortedAttachments.find((a) => (a.bytesMimeType ?? '').startsWith('image/')) ?? sortedAttachments[0];
+  const attachmentUrl = latestAttachment ? `${restBaseUrl}/attachment/${latestAttachment.uuid}/bytes` : '';
+
+  // Prefer the obs-based URL when present so registration uploads always win.
+  const photographyUrl = frameworkPhoto?.imageSrc || attachmentUrl;
+  const isLoading = frameworkLoading || (shouldQueryAttachments && attachmentsLoading);
+
+  return { photographyUrl, isLoading };
 }
 
 // ── Fetch existing SCD encounter ─────────────────────────────────────
@@ -418,6 +598,20 @@ export function mapEncounterToFormData(
         mapDiagnosisGroup(ob, c, result);
         break;
     }
+  }
+
+  // Sort primary diagnoses chronologically (earliest first). Entries
+  // without a diagnosedDate are pushed to the end so the timeline stays
+  // readable.
+  if (result.primaryDiagnoses && result.primaryDiagnoses.length > 1) {
+    result.primaryDiagnoses = [...result.primaryDiagnoses].sort((a, b) => {
+      const da = a.diagnosedDate ? Date.parse(a.diagnosedDate) : Number.POSITIVE_INFINITY;
+      const db = b.diagnosedDate ? Date.parse(b.diagnosedDate) : Number.POSITIVE_INFINITY;
+      if (Number.isNaN(da) && Number.isNaN(db)) return 0;
+      if (Number.isNaN(da)) return 1;
+      if (Number.isNaN(db)) return -1;
+      return da - db;
+    });
   }
 
   return result;
@@ -534,14 +728,21 @@ export function usePatientDemographics(patientUuid: string) {
 export interface EmergencyContact {
   label: string;
   phone: string;
+  ownerName?: string;
 }
 
 export function useEmergencyContacts(
   patientUuid: string,
   registrationEncounterTypeUuid: string,
-  concepts: { parentGuardianPhone: string; spousePartnerPhone: string; emergencyContactPhone: string },
+  concepts: {
+    parentGuardianPhone?: string;
+    spousePartnerPhone?: string;
+    emergencyContactPhone?: string;
+    parentGuardianName?: string;
+    spousePartnerName?: string;
+    emergencyContactName?: string;
+  },
 ): { contacts: EmergencyContact[]; isLoading: boolean } {
-  const OBS_REP = 'custom:(uuid,concept:(uuid),value)';
   const url =
     patientUuid && registrationEncounterTypeUuid
       ? `${restBaseUrl}/encounter?patient=${patientUuid}&encounterType=${registrationEncounterTypeUuid}&v=custom:(obs:(uuid,concept:(uuid),value))&limit=1&order=desc`
@@ -554,16 +755,28 @@ export function useEmergencyContacts(
   const encounter = data?.data?.results?.[0];
   const obsArr = encounter?.obs ?? [];
 
-  const labelMap: Record<string, string> = {};
-  if (concepts.parentGuardianPhone) labelMap[concepts.parentGuardianPhone] = 'Parent/Guardian';
-  if (concepts.spousePartnerPhone) labelMap[concepts.spousePartnerPhone] = 'Spouse/Partner';
-  if (concepts.emergencyContactPhone) labelMap[concepts.emergencyContactPhone] = 'Emergency Contact';
+  // Build a flat lookup of concept-uuid → obs.value for both phone and name concepts.
+  const obsByConcept: Record<string, string> = {};
+  for (const ob of obsArr) {
+    const uuid = ob.concept?.uuid;
+    if (uuid && ob.value != null && ob.value !== '') {
+      obsByConcept[uuid] = String(ob.value);
+    }
+  }
+
+  // Pair each phone with its companion name field.
+  const groups: Array<{ label: string; phoneConcept?: string; nameConcept?: string }> = [
+    { label: 'Contact 1', phoneConcept: concepts.parentGuardianPhone, nameConcept: concepts.parentGuardianName },
+    { label: 'Contact 2', phoneConcept: concepts.spousePartnerPhone, nameConcept: concepts.spousePartnerName },
+    { label: 'Contact 3', phoneConcept: concepts.emergencyContactPhone, nameConcept: concepts.emergencyContactName },
+  ];
 
   const contacts: EmergencyContact[] = [];
-  for (const ob of obsArr) {
-    const conceptUuid = ob.concept?.uuid;
-    if (conceptUuid && labelMap[conceptUuid] && ob.value) {
-      contacts.push({ label: labelMap[conceptUuid], phone: String(ob.value) });
+  for (const g of groups) {
+    const phone = g.phoneConcept ? obsByConcept[g.phoneConcept] : '';
+    const ownerName = g.nameConcept ? obsByConcept[g.nameConcept] : '';
+    if (phone || ownerName) {
+      contacts.push({ label: g.label, phone: phone ?? '', ownerName: ownerName || undefined });
     }
   }
 

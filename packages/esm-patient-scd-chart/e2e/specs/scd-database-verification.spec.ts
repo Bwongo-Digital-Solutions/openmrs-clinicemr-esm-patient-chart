@@ -250,7 +250,7 @@ test.describe('SCD Database Verification', () => {
       name: 'Bob Test',
       yearOfBirth: '2008',
       testedForScd: 'yes',
-      testResult: 'positive',
+      testResult: 'SS',
     });
     await scdFormPage.addDiagnosis({ key: 'stroke', diagnosedDate: '2021-05-20' });
     await scdFormPage.addDiagnosis({ key: 'splenomegaly', diagnosedDate: '2021-06-15' });
