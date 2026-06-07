@@ -57,7 +57,7 @@ const PostRegistrationRedirect: React.FC = () => {
     };
 
     if (token && patientUuid && cashPointUuid && providerUuid) {
-      createBill({
+      createBill(config.billingApiBasePath, {
         patientUuid,
         cashPointUuid,
         cashierUuid: providerUuid,
@@ -74,7 +74,7 @@ const PostRegistrationRedirect: React.FC = () => {
       })
         .then((res) =>
           res?.data
-            ? processPayment({
+            ? processPayment(config.billingApiBasePath, {
                 bill: res.data,
                 paymentModeUuid: token.paymentModeUuid,
                 amountTendered: token.amountTendered,

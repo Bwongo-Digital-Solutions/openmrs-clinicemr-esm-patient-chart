@@ -1,8 +1,12 @@
 import useSWR from 'swr';
-import { openmrsFetch, restBaseUrl } from '@openmrs/esm-framework';
+import { openmrsFetch, restBaseUrl, useConfig } from '@openmrs/esm-framework';
 import type { Bill, BillableService, CashPoint, NewLineItem, PaymentMode } from './types';
+import type { PaymentManagerConfig } from '../config-schema';
 
-const cashierBase = `${restBaseUrl}/cashier`;
+function useBillingBase() {
+  const config = useConfig() as PaymentManagerConfig;
+  return `${restBaseUrl}/${config.billingApiBasePath || 'cashier'}`;
+}
 
 const billableServiceRep =
   'custom:(uuid,name,shortName,serviceStatus,serviceType:(uuid,display),servicePrices:(uuid,name,price))';
@@ -20,7 +24,8 @@ interface RestResults<T> {
  * All active billable services with their service prices.
  */
 export function useBillableServices() {
-  const url = `${cashierBase}/billableService?v=${encodeURIComponent(billableServiceRep)}`;
+  const billingBase = useBillingBase();
+  const url = `${billingBase}/billableService?v=${encodeURIComponent(billableServiceRep)}`;
   const { data, error, isLoading, mutate } = useSWR<{ data: RestResults<BillableService> }>(url, openmrsFetch);
   const services = (data?.data?.results ?? []).filter(
     (s) => !s.serviceStatus || s.serviceStatus.toUpperCase() === 'ENABLED',
@@ -32,7 +37,8 @@ export function useBillableServices() {
  * Available (non-retired) payment modes configured in the cashier module.
  */
 export function usePaymentModes() {
-  const url = `${cashierBase}/paymentMode?v=custom:(uuid,name,description,retired)`;
+  const billingBase = useBillingBase();
+  const url = `${billingBase}/paymentMode?v=custom:(uuid,name,description,retired)`;
   const { data, error, isLoading } = useSWR<{ data: RestResults<PaymentMode> }>(url, openmrsFetch);
   const paymentModes = (data?.data?.results ?? []).filter((m) => !m.retired);
   return { paymentModes, error, isLoading };
@@ -42,7 +48,8 @@ export function usePaymentModes() {
  * Cash points configured in the cashier module.
  */
 export function useCashPoints() {
-  const url = `${cashierBase}/cashPoint?v=custom:(uuid,name,retired)`;
+  const billingBase = useBillingBase();
+  const url = `${billingBase}/cashPoint?v=custom:(uuid,name,retired)`;
   const { data, error, isLoading } = useSWR<{ data: RestResults<CashPoint> }>(url, openmrsFetch);
   const cashPoints = (data?.data?.results ?? []).filter((c) => !c.retired);
   return { cashPoints, error, isLoading };
@@ -64,7 +71,8 @@ export function useProviderUuid(userUuid: string | undefined) {
  * Bills filtered by status (defaults to PENDING) — used by the cashier queue.
  */
 export function useBills(status: string = 'PENDING') {
-  const url = `${cashierBase}/bill?status=${encodeURIComponent(status)}&v=${encodeURIComponent(billRep)}`;
+  const billingBase = useBillingBase();
+  const url = `${billingBase}/bill?status=${encodeURIComponent(status)}&v=${encodeURIComponent(billRep)}`;
   const { data, error, isLoading, mutate } = useSWR<{ data: RestResults<Bill> }>(url, openmrsFetch);
   return { bills: data?.data?.results ?? [], error, isLoading, mutate };
 }
@@ -73,7 +81,8 @@ export function useBills(status: string = 'PENDING') {
  * Bills for a single patient.
  */
 export function usePatientBills(patientUuid: string | undefined) {
-  const url = patientUuid ? `${cashierBase}/bill?patientUuid=${patientUuid}&v=${encodeURIComponent(billRep)}` : null;
+  const billingBase = useBillingBase();
+  const url = patientUuid ? `${billingBase}/bill?patientUuid=${patientUuid}&v=${encodeURIComponent(billRep)}` : null;
   const { data, error, isLoading, mutate } = useSWR<{ data: RestResults<Bill> }>(url, openmrsFetch);
   return { bills: data?.data?.results ?? [], error, isLoading, mutate };
 }
@@ -89,13 +98,17 @@ interface CreateBillArgs {
 /**
  * Create a new (PENDING by default) bill with one or more line items.
  */
-export async function createBill({
-  patientUuid,
-  cashPointUuid,
-  cashierUuid,
-  lineItems,
-  status = 'PENDING',
-}: CreateBillArgs) {
+export async function createBill(
+  basePath: string,
+  {
+    patientUuid,
+    cashPointUuid,
+    cashierUuid,
+    lineItems,
+    status = 'PENDING',
+  }: CreateBillArgs
+) {
+  const billingBase = `${restBaseUrl}/${basePath || 'cashier'}`;
   const payload = {
     cashPoint: cashPointUuid,
     cashier: cashierUuid,
@@ -113,7 +126,7 @@ export async function createBill({
     payments: [],
   };
 
-  return openmrsFetch<Bill>(`${cashierBase}/bill`, {
+  return openmrsFetch<Bill>(`${billingBase}/bill`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: payload,
@@ -129,7 +142,8 @@ interface ProcessPaymentArgs {
 /**
  * Record a payment against an existing bill and mark its line items + bill PAID.
  */
-export async function processPayment({ bill, paymentModeUuid, amountTendered }: ProcessPaymentArgs) {
+export async function processPayment(basePath: string, { bill, paymentModeUuid, amountTendered }: ProcessPaymentArgs) {
+  const billingBase = `${restBaseUrl}/${basePath || 'cashier'}`;
   const total = bill.lineItems.reduce((sum, li) => sum + li.price * (li.quantity ?? 1), 0);
   const payload = {
     cashPoint: typeof bill.cashPoint === 'string' ? bill.cashPoint : bill.cashPoint?.uuid,
@@ -156,7 +170,7 @@ export async function processPayment({ bill, paymentModeUuid, amountTendered }: 
     ],
   };
 
-  return openmrsFetch<Bill>(`${cashierBase}/bill/${bill.uuid}`, {
+  return openmrsFetch<Bill>(`${billingBase}/bill/${bill.uuid}`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: payload,

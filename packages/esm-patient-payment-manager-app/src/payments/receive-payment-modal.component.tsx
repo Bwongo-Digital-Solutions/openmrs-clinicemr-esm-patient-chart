@@ -37,7 +37,7 @@ const ReceivePaymentModal: React.FC<ReceivePaymentModalProps> = ({ bill, onClose
     setSubmitting(true);
     setError(null);
     try {
-      await processPayment({ bill, paymentModeUuid, amountTendered });
+      await processPayment(config.billingApiBasePath, { bill, paymentModeUuid, amountTendered });
       showSnackbar({
         kind: 'success',
         title: t('paymentProcessed', 'Payment processed'),

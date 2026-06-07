@@ -59,6 +59,12 @@ export const configSchema = {
     _default: 25,
     _description: 'Maximum number of rows to load per page in the payment lists.',
   },
+  billingApiBasePath: {
+    _type: Type.String,
+    _default: 'cashier',
+    _description:
+      'REST API base path segment for the billing/cashier module. Use "cashier" for the Cashier module or "billing" for the Billing module.',
+  },
 };
 
 export interface PaymentManagerConfig {
@@ -71,4 +77,5 @@ export interface PaymentManagerConfig {
   cashPointUuid: string;
   defaultCurrency: string;
   pageSize: number;
+  billingApiBasePath: string;
 }

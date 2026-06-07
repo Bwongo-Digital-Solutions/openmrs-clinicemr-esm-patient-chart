@@ -83,7 +83,7 @@ function OrderPaymentPanelExtension({ patient }: OrderBasketExtensionProps) {
     }
     setSubmitting(true);
     try {
-      await createBill({
+      await createBill(config.billingApiBasePath, {
         patientUuid: patient.id,
         cashPointUuid,
         cashierUuid: providerUuid,
