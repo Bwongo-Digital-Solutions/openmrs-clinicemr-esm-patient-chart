@@ -1,6 +1,6 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { Button, Dropdown, Form, InlineLoading, InlineNotification, NumberInput, Tile } from '@carbon/react';
+import { Button, Dropdown, Form, InlineLoading, InlineNotification, NumberInput, TextInput, Tile } from '@carbon/react';
 import { ArrowRight } from '@carbon/react/icons';
 import { navigate, showSnackbar, useConfig, useSession } from '@openmrs/esm-framework';
 import type { PaymentManagerConfig } from '../config-schema';
@@ -19,10 +19,11 @@ const ConsultationPayment: React.FC = () => {
   const { t } = useTranslation();
   const session = useSession();
   const config = useConfig<PaymentManagerConfig>();
-  const { paymentModes, isLoading: loadingModes } = usePaymentModes();
+  const { paymentModes, isLoading: loadingModes, error: modesError } = usePaymentModes();
 
   const [selected, setSelected] = useState<SelectedService | null>(null);
   const [paymentModeUuid, setPaymentModeUuid] = useState<string>('');
+  const [manualPaymentMode, setManualPaymentMode] = useState<string>('');
   const [amountTendered, setAmountTendered] = useState<number>(0);
   const [submitting, setSubmitting] = useState(false);
 
@@ -58,11 +59,12 @@ const ConsultationPayment: React.FC = () => {
     );
   }
 
-  const canSubmit = !!selected && !!paymentModeUuid && amountTendered >= price && price >= 0 && !submitting;
+  const hasPaymentMode = !!paymentModeUuid || (!!manualPaymentMode && modesError);
+  const canSubmit = !!selected && hasPaymentMode && amountTendered >= price && price >= 0 && !submitting;
 
   const handleSubmit = (event: React.FormEvent) => {
     event.preventDefault();
-    if (!selected || !paymentModeUuid) return;
+    if (!selected || !hasPaymentMode) return;
     setSubmitting(true);
     try {
       setConsultationToken(session.user.uuid, {
@@ -71,7 +73,7 @@ const ConsultationPayment: React.FC = () => {
         price,
         priceUuid: selected.price.uuid,
         priceName: selected.price.name,
-        paymentModeUuid,
+        paymentModeUuid: modesError ? manualPaymentMode : paymentModeUuid,
         amountTendered,
         createdAt: Date.now(),
       });
@@ -110,6 +112,14 @@ const ConsultationPayment: React.FC = () => {
           <div className={styles.field}>
             {loadingModes ? (
               <InlineLoading description={t('loadingModes', 'Loading payment modes…')} />
+            ) : modesError ? (
+              <TextInput
+                id="payment-mode-manual"
+                labelText={t('paymentMode', 'Payment method')}
+                value={manualPaymentMode}
+                onChange={(e) => setManualPaymentMode(e.target.value)}
+                placeholder={t('e.gCash', 'e.g. Cash')}
+              />
             ) : (
               <Dropdown
                 id="payment-mode"
