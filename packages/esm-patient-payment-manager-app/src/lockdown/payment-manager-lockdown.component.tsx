@@ -13,7 +13,17 @@ import { hasValidConsultationToken } from '../consultation/consultation-session'
  *  - Cashier roles (Organisation Nurse, Cashier, Receptionist) may only reach
  *    `patient-registration` after recording a consultation payment; otherwise
  *    they are redirected to the consultation payment gate.
+ *  - Cashiers are also redirected away from non-work pages (home, appointments,
+ *    etc.) to their default work queue so they don't get lost in the UI.
  */
+const CASHIER_ALLOWED_PATHS = [
+  'patient-registration',
+  'payment-manager',
+  'post-registration',
+  'login',
+  'logout',
+];
+
 function firstSegments(): string[] {
   const path = window.location.pathname
     .replace(/^\/openmrs\/spa\/?/, '')
@@ -57,6 +67,12 @@ const PaymentManagerLockdown: React.FC = () => {
           subtitle: 'Collect the consultation fee before registering this patient.',
         });
         navigate({ to: `\${openmrsSpaBase}/${config.consultationPaymentPath}` });
+        return;
+      }
+
+      // Redirect cashiers away from non-work pages to their default queue.
+      if (isCashier && first && !CASHIER_ALLOWED_PATHS.includes(first)) {
+        navigate({ to: `\${openmrsSpaBase}/${config.registrationListPath}` });
       }
     };
 
