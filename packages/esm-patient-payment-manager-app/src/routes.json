@@ -1,0 +1,38 @@
+{
+  "$schema": "https://json.openmrs.org/routes.schema.json",
+  "backendDependencies": {
+    "webservices.rest": ">=2.2.0",
+    "cashier": ">=1.0.0"
+  },
+  "pages": [
+    {
+      "component": "consultationPayment",
+      "route": "payment-manager/consultation"
+    },
+    {
+      "component": "postRegistrationRedirect",
+      "route": "post-registration"
+    },
+    {
+      "component": "myRegisteredPatients",
+      "route": "payment-manager/patients"
+    },
+    {
+      "component": "pendingPayments",
+      "route": "payment-manager/pending"
+    }
+  ],
+  "extensions": [
+    {
+      "name": "payment-manager-lockdown",
+      "component": "paymentManagerLockdown",
+      "slot": "top-nav-actions-slot"
+    },
+    {
+      "name": "order-payment-panel",
+      "component": "orderPaymentPanel",
+      "slot": "order-basket-slot",
+      "order": 99
+    }
+  ]
+}

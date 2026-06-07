@@ -3,7 +3,7 @@ export interface Sibling {
   name: string;
   yearOfBirth: string;
   testedForScd: 'yes' | 'no' | '';
-  testResult: 'Health Person - AA' | 'Carrier - AS' | 'Sickle Cell Disease - SS' | '';
+  testResult: 'AA' | 'AS' | 'SS' | '';
   ssuuboNo: string;
 }
 

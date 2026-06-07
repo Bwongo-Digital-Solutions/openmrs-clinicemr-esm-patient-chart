@@ -1,0 +1,79 @@
+.container {
+  padding: 1.5rem 2rem;
+  max-width: 1200px;
+  margin: 0 auto;
+}
+
+.title {
+  margin-bottom: 1rem;
+  font-weight: 600;
+}
+
+.header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 1rem;
+
+  .title {
+    margin-bottom: 0;
+  }
+}
+
+.card {
+  max-width: 560px;
+  padding: 2rem;
+  background: var(--cds-layer, #f4f4f4);
+  border-radius: 0.25rem;
+}
+
+.field {
+  margin-bottom: 1.25rem;
+}
+
+.summary {
+  display: flex;
+  justify-content: space-between;
+  padding: 0.75rem 0;
+  border-top: 1px solid var(--cds-border-subtle, #e0e0e0);
+  font-weight: 600;
+}
+
+.actions {
+  display: flex;
+  gap: 0.75rem;
+  margin-top: 1.5rem;
+}
+
+.emptyTile {
+  padding: 2rem;
+  text-align: center;
+}
+
+.emptyAction {
+  margin-top: 1rem;
+}
+
+.price {
+  font-weight: 600;
+}
+
+.panel {
+  padding: 0.5rem 0;
+}
+
+.panelHeader {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  font-weight: 600;
+  margin-bottom: 0.5rem;
+}
+
+.orderRow {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0.5rem 0;
+  border-bottom: 1px solid var(--cds-border-subtle, #e0e0e0);
+}

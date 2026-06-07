@@ -391,11 +391,11 @@ const ScdPatientDashboard: React.FC<ScdPatientDashboardProps> = ({ patientUuid: 
                               size="sm"
                             >
                               {sibling.testResult === 'AA'
-                                ? 'AA - Healthy Person'
+                                ? 'AA'
                                 : sibling.testResult === 'AS'
-                                  ? 'AS - Carrier'
+                                  ? 'AS'
                                   : sibling.testResult === 'SS'
-                                    ? 'SS - Sickle Cell'
+                                    ? 'SS'
                                     : sibling.testResult}
                             </Tag>
                           ) : (

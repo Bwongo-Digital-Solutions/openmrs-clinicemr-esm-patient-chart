@@ -168,12 +168,12 @@ const ScdGeneralInfoForm: React.FC<ScdGeneralInfoFormProps> = ({
     (data: ScdPatientGeneralInfo): FormErrors => {
       const e: FormErrors = {};
 
-      if (!data.address || !data.address.trim()) e.address = t('addressRequired', 'Address is required');
+      // Disabled:       if (!data.address || !data.address.trim()) e.address = t('addressRequired', 'Address is required');
 
       const contactErrs: (string | undefined)[] = data.contactNumbers.map((num) =>
         num && !/^\+?[\d\s\-().]{7,}$/.test(num.trim()) ? t('invalidPhone', 'Enter a valid phone number') : undefined,
       );
-      if (contactErrs.some(Boolean)) e.contactNumbers = contactErrs;
+      // Disabled:       if (contactErrs.some(Boolean)) e.contactNumbers = contactErrs;
 
       if (data.hydroxyureaEnabled && !data.hydroxyureaStartDate)
         e.hydroxyureaStartDate = t('startDateRequired', 'Start date is required when treatment is enabled');
@@ -694,6 +694,7 @@ const ScdGeneralInfoForm: React.FC<ScdGeneralInfoFormProps> = ({
           <Column lg={8} md={8} sm={4} className={styles.fieldSpacing}>
             <TextInput
               id="address"
+              readOnly
               labelText={t('address', 'Address')}
               value={form.address}
               onChange={(e) => setField('address', e.target.value)}
@@ -727,6 +728,7 @@ const ScdGeneralInfoForm: React.FC<ScdGeneralInfoFormProps> = ({
                     ) : (
                       <TextInput
                         id={`contact-owner-${idx}`}
+                        readOnly
                         labelText=""
                         hideLabel
                         value={ownerName}
@@ -736,6 +738,7 @@ const ScdGeneralInfoForm: React.FC<ScdGeneralInfoFormProps> = ({
                     )}
                     <TextInput
                       id={`contact-${idx}`}
+                      readOnly
                       labelText=""
                       hideLabel
                       value={num}
@@ -744,28 +747,33 @@ const ScdGeneralInfoForm: React.FC<ScdGeneralInfoFormProps> = ({
                       invalid={!!errors.contactNumbers?.[idx]}
                       invalidText={errors.contactNumbers?.[idx]}
                     />
-                    <Button
-                      kind="danger--ghost"
-                      size="sm"
-                      renderIcon={TrashCan}
-                      iconDescription={t('remove', 'Remove')}
-                      hasIconOnly
-                      onClick={() => removeContact(idx)}
-                      disabled={form.contactNumbers.length === 1}
-                      className={styles.iconBtn}
-                    />
+                    {false && (
+                      <Button
+                        kind="danger--ghost"
+                        size="sm"
+                        renderIcon={TrashCan}
+                        iconDescription={t('remove', 'Remove')}
+                        hasIconOnly
+                        onClick={() => removeContact(idx)}
+                        disabled={form.contactNumbers.length === 1}
+                        className={styles.iconBtn}
+                      />
+                    )}
                   </div>
                 );
               })}
-              <Button kind="ghost" size="sm" renderIcon={Add} onClick={addContact} className={styles.addBtn}>
-                {t('addContact', 'Add contact number')}
-              </Button>
+              {false && (
+                <Button kind="ghost" size="sm" renderIcon={Add} onClick={addContact} className={styles.addBtn}>
+                  {t('addContact', 'Add contact number')}
+                </Button>
+              )}
             </FormGroup>
           </Column>
 
           <Column lg={8} md={6} sm={4}>
             <TextArea
               id="comments"
+              readOnly
               labelText={t('comments', 'Comments')}
               value={form.comments}
               onChange={(e) => setField('comments', e.target.value)}
@@ -790,7 +798,7 @@ const ScdGeneralInfoForm: React.FC<ScdGeneralInfoFormProps> = ({
               </div>
             )}
           </div>
-          <div className={styles.photoUpload}>
+          <div className={styles.photoUpload} style={{ display: 'none' }}>
             <input
               ref={fileInputRef}
               type="file"
@@ -885,9 +893,9 @@ const ScdGeneralInfoForm: React.FC<ScdGeneralInfoFormProps> = ({
                   invalidText={errors.siblings?.[idx]?.testResult}
                 >
                   <SelectItem value="" text={t('select', 'Select...')} />
-                  <SelectItem value="AA" text={t('resultAA', 'AA - Healthy Person')} />
-                  <SelectItem value="AS" text={t('resultAS', 'AS - Carrier')} />
-                  <SelectItem value="SS" text={t('resultSS', 'SS - Sickle Cell')} />
+                  <SelectItem value="AA" text={t('resultAA', 'AA')} />
+                  <SelectItem value="AS" text={t('resultAS', 'AS')} />
+                  <SelectItem value="SS" text={t('resultSS', 'SS')} />
                 </Select>
               </Column>
               <Column lg={4} md={4} sm={4}>
