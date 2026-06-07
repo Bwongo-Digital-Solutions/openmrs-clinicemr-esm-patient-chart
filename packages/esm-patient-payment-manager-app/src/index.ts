@@ -40,3 +40,8 @@ export const orderPaymentPanel = getAsyncLifecycle(
   () => import('./order-basket/order-payment-panel.extension'),
   options,
 );
+
+export const paymentManagerNavAction = getAsyncLifecycle(
+  () => import('./nav/payment-manager-nav-action.component'),
+  options,
+);

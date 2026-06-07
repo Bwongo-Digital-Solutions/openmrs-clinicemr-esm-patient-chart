@@ -4,7 +4,7 @@ export const configSchema = {
   cashierRoleNames: {
     _type: Type.Array,
     _elements: { _type: Type.String },
-    _default: ['Organizational: Nurse', 'Cashier', 'Receptionist'],
+    _default: ['Organizational: Nurse', 'Organizational: Registration Clerk', 'Cashier', 'Receptionist'],
     _description:
       'Names of the OpenMRS roles allowed to use the Payment Manager: receive payments, register patients for consultation, and clear order payments.',
   },

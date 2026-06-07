@@ -29,6 +29,11 @@
       "slot": "top-nav-actions-slot"
     },
     {
+      "name": "payment-manager-nav-action",
+      "component": "paymentManagerNavAction",
+      "slot": "top-nav-actions-slot"
+    },
+    {
       "name": "order-payment-panel",
       "component": "orderPaymentPanel",
       "slot": "order-basket-slot",
