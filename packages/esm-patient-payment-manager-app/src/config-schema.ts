@@ -23,7 +23,7 @@ export const configSchema = {
       'Names of clinical provider roles that are NOT allowed to access the Payment Manager or register patients. Members of these roles are blocked from registration and payment pages.',
   },
   consultationBillableServiceUuid: {
-    _type: Type.UUID,
+    _type: Type.String,
     _default: '',
     _description:
       'UUID of the billable service representing a consultation fee. When set, it is pre-selected on the consultation payment gate. If empty, the cashier picks from all billable services.',
@@ -44,7 +44,7 @@ export const configSchema = {
     _description: 'UUID of the encounter type recorded during patient registration.',
   },
   cashPointUuid: {
-    _type: Type.UUID,
+    _type: Type.String,
     _default: '',
     _description:
       'UUID of the cash point (billing module) bills are created against. If empty, the first cash point returned by the cashier module is used.',
