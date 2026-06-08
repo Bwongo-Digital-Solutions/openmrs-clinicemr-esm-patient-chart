@@ -157,6 +157,14 @@
   margin-bottom: layout.$spacing-02;
 }
 
+.testCheckboxLabel {
+  display: inline-flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: layout.$spacing-03;
+  width: 100%;
+}
+
 // ── Details Section (Step 2) ──────────────────────────────────────────
 .detailsSection {
   margin-bottom: layout.$spacing-05;

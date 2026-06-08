@@ -16,10 +16,38 @@ export const configSchema = {
     _default: '6f0c9a92-6f24-11e3-af88-005056821db0',
     _description: 'UUID of the care setting (Outpatient).',
   },
+  defaultCurrency: {
+    _type: Type.String,
+    _default: 'UGX',
+    _description: 'Currency code/symbol shown next to test prices.',
+  },
+  defaultTestPrice: {
+    _type: Type.Number,
+    _default: 0,
+    _description: 'Fallback price used for a test that has no explicit price configured in testPrices.',
+  },
+  testPrices: {
+    _type: Type.Array,
+    _elements: {
+      testId: { _type: Type.String },
+      price: { _type: Type.Number },
+    },
+    _default: [],
+    _description:
+      'Per-test prices keyed by the test id (matching LAB_TEST_CATEGORIES). Sourced from the facility price list / database export and configured in the distro. Tests without an entry fall back to defaultTestPrice.',
+  },
 };
+
+export interface TestPrice {
+  testId: string;
+  price: number;
+}
 
 export type Config = {
   labOrderEncounterTypeUuid: string;
   labOrderTypeUuid: string;
   careSettingUuid: string;
+  defaultCurrency: string;
+  defaultTestPrice: number;
+  testPrices: TestPrice[];
 };

@@ -40,8 +40,16 @@ export const configSchema = {
   paymentMethods: {
     _type: Type.Array,
     _elements: { _type: Type.String },
-    _default: ['Cash', 'Mobile Money', 'Insurance', 'Bank Transfer'],
-    _description: 'Payment methods configured for the facility. These populate the payment-method selectors.',
+    _default: ['Cash', 'Bank', 'Mobile Money', 'Airtel Money'],
+    _description:
+      'Payment modes available to PRIVATE (self-paying) patients. These populate the payment-method selector when the client type is "Private".',
+  },
+  insuranceProviders: {
+    _type: Type.Array,
+    _elements: { _type: Type.String },
+    _default: ['Jubilee Insurance', 'UAP Old Mutual', 'AAR Insurance', 'Prudential', 'Sanlam', 'Liberty Health'],
+    _description:
+      'Insurance providers available to CORPORATE patients. These populate the insurance-provider selector when the client type is "Corporate".',
   },
   consultationBillableServiceUuid: {
     _type: Type.String,
@@ -99,6 +107,7 @@ export interface PaymentManagerConfig {
   providerRoleNames: string[];
   billableServices: ConfiguredBillableService[];
   paymentMethods: string[];
+  insuranceProviders: string[];
   consultationBillableServiceUuid: string;
   registrationListPath: string;
   consultationPaymentPath: string;

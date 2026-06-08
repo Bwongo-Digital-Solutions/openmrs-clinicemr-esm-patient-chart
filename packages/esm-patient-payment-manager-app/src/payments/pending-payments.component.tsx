@@ -33,6 +33,7 @@ const PendingPayments: React.FC = () => {
 
   const headers = [
     { key: 'patient', header: t('patient', 'Patient') },
+    { key: 'requestedBy', header: t('requestedBy', 'Requested by') },
     { key: 'items', header: t('items', 'Items') },
     { key: 'amount', header: t('amount', 'Amount') },
     { key: 'created', header: t('created', 'Created') },
@@ -45,6 +46,7 @@ const PendingPayments: React.FC = () => {
         id: bill.uuid,
         bill,
         patient: bill.patientName || bill.patientUuid || '—',
+        requestedBy: bill.requestedByName || t('frontDesk', 'Front desk'),
         items: bill.lineItems.map((li) => li.name || t('service', 'Service')).join(', '),
         amount: currencyFmt(billTotal(bill)),
         created: bill.createdAt ? formatDate(new Date(bill.createdAt)) : '—',

@@ -1,12 +1,12 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { Button, Dropdown, Form, InlineLoading, InlineNotification, NumberInput, Tile } from '@carbon/react';
+import { Button, Form, InlineNotification, NumberInput, Tile } from '@carbon/react';
 import { ArrowRight } from '@carbon/react/icons';
 import { navigate, showSnackbar, useConfig, useSession } from '@openmrs/esm-framework';
 import type { PaymentManagerConfig } from '../config-schema';
 import { isCashierUser, isProviderUser } from '../roles';
-import { usePaymentModes } from '../billing/billing.resource';
 import BillableServicePicker, { type SelectedService } from '../billing/billable-service-picker.component';
+import PayerSelector, { formatPayer, type PayerSelection } from '../billing/payer-selector.component';
 import { setConsultationToken } from './consultation-session';
 import styles from '../payment-manager.scss';
 
@@ -19,10 +19,9 @@ const ConsultationPayment: React.FC = () => {
   const { t } = useTranslation();
   const session = useSession();
   const config = useConfig<PaymentManagerConfig>();
-  const { paymentModes, isLoading: loadingModes } = usePaymentModes();
 
   const [selected, setSelected] = useState<SelectedService | null>(null);
-  const [paymentModeUuid, setPaymentModeUuid] = useState<string>('');
+  const [payer, setPayer] = useState<PayerSelection>({ clientType: 'PRIVATE', payer: '' });
   const [amountTendered, setAmountTendered] = useState<number>(0);
   const [submitting, setSubmitting] = useState(false);
 
@@ -58,11 +57,11 @@ const ConsultationPayment: React.FC = () => {
     );
   }
 
-  const canSubmit = !!selected && !!paymentModeUuid && amountTendered >= price && price >= 0 && !submitting;
+  const canSubmit = !!selected && !!payer.payer && amountTendered >= price && price >= 0 && !submitting;
 
   const handleSubmit = (event: React.FormEvent) => {
     event.preventDefault();
-    if (!selected || !paymentModeUuid) return;
+    if (!selected || !payer.payer) return;
     setSubmitting(true);
     try {
       setConsultationToken(session.user.uuid, {
@@ -71,7 +70,7 @@ const ConsultationPayment: React.FC = () => {
         price,
         priceUuid: selected.price.uuid,
         priceName: selected.price.name,
-        paymentModeUuid,
+        paymentModeUuid: formatPayer(payer),
         amountTendered,
         createdAt: Date.now(),
       });
@@ -108,19 +107,7 @@ const ConsultationPayment: React.FC = () => {
           </div>
 
           <div className={styles.field}>
-            {loadingModes ? (
-              <InlineLoading description={t('loadingModes', 'Loading payment modes…')} />
-            ) : (
-              <Dropdown
-                id="payment-mode"
-                titleText={t('paymentMode', 'Payment method')}
-                label={t('choosePaymentMode', 'Choose a payment method…')}
-                items={paymentModes}
-                itemToString={(item) => item?.name ?? ''}
-                selectedItem={paymentModes.find((m) => m.uuid === paymentModeUuid) ?? null}
-                onChange={({ selectedItem }) => setPaymentModeUuid(selectedItem?.uuid ?? '')}
-              />
-            )}
+            <PayerSelector id="consultation-payer" value={payer} onChange={setPayer} />
           </div>
 
           <div className={styles.field}>

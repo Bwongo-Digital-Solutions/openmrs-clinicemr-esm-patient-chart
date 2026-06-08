@@ -28,6 +28,7 @@ import { useTranslation } from 'react-i18next';
 import { useConfig, showSnackbar } from '@openmrs/esm-framework';
 import { type Config } from '../config-schema';
 import { LAB_TEST_CATEGORIES, type LabTest } from './types';
+import { buildPriceMap, formatPrice, getTestPrice, getTotalPrice } from './pricing';
 import { submitLabOrders, useSession, usePatientDemographics } from './lab-request.resource';
 import styles from './lab-request-form.scss';
 
@@ -62,6 +63,18 @@ const LabRequestForm: React.FC<LabRequestFormProps> = ({ patientUuid, closeWorks
     }
     return map;
   }, []);
+
+  const priceMap = useMemo(() => buildPriceMap(config.testPrices), [config.testPrices]);
+  const currency = config.defaultCurrency;
+  const defaultPrice = config.defaultTestPrice ?? 0;
+  const priceOf = useCallback(
+    (testId: string) => getTestPrice(testId, priceMap, defaultPrice),
+    [priceMap, defaultPrice],
+  );
+  const totalPrice = useMemo(
+    () => getTotalPrice(selectedTests, priceMap, defaultPrice),
+    [selectedTests, priceMap, defaultPrice],
+  );
 
   const filteredCategories = useMemo(() => {
     if (!searchTerm.trim()) return LAB_TEST_CATEGORIES;
@@ -243,6 +256,8 @@ const LabRequestForm: React.FC<LabRequestFormProps> = ({ patientUuid, closeWorks
               <div className={styles.summaryHeader}>
                 <span className={styles.summaryCount}>
                   {t('selectedTests', '{{count}} test(s) selected', { count: selectedTests.size })}
+                  {' · '}
+                  <strong>{t('total', 'Total')}: {formatPrice(totalPrice, currency)}</strong>
                 </span>
                 <Button kind="ghost" size="sm" renderIcon={Reset} onClick={clearAll}>
                   {t('clearAll', 'Clear All')}
@@ -317,7 +332,14 @@ const LabRequestForm: React.FC<LabRequestFormProps> = ({ patientUuid, closeWorks
                           <Column key={test.id} lg={4} md={4} sm={4}>
                             <Checkbox
                               id={`test-${test.id}`}
-                              labelText={test.label}
+                              labelText={
+                                <span className={styles.testCheckboxLabel}>
+                                  <span>{test.label}</span>
+                                  <Tag type="green" size="sm">
+                                    {formatPrice(priceOf(test.id), currency)}
+                                  </Tag>
+                                </span>
+                              }
                               checked={selectedTests.has(test.id)}
                               onChange={() => toggleTest(test.id)}
                               className={styles.testCheckbox}
@@ -396,6 +418,9 @@ const LabRequestForm: React.FC<LabRequestFormProps> = ({ patientUuid, closeWorks
               <span className={styles.reviewTestCount}>
                 {t('totalTests', '{{count}} test(s)', { count: selectedTests.size })}
               </span>
+              <Tag type="green" size="md">
+                {t('total', 'Total')}: {formatPrice(totalPrice, currency)}
+              </Tag>
             </div>
           </Tile>
 
@@ -405,24 +430,31 @@ const LabRequestForm: React.FC<LabRequestFormProps> = ({ patientUuid, closeWorks
               <StructuredListHead>
                 <StructuredListRow head>
                   <StructuredListCell head>{t('category', 'Category')}</StructuredListCell>
-                  <StructuredListCell head>{t('tests', 'Tests')}</StructuredListCell>
+                  <StructuredListCell head>{t('test', 'Test')}</StructuredListCell>
+                  <StructuredListCell head>{t('price', 'Price')}</StructuredListCell>
                 </StructuredListRow>
               </StructuredListHead>
               <StructuredListBody>
-                {selectedTestsByCategory.map((group) => (
-                  <StructuredListRow key={group.categoryLabel}>
-                    <StructuredListCell className={styles.reviewCategoryCell}>{group.categoryLabel}</StructuredListCell>
-                    <StructuredListCell>
-                      <div className={styles.reviewTestTags}>
-                        {group.tests.map((test) => (
-                          <Tag key={test.id} type="blue" size="sm">
-                            {test.label}
-                          </Tag>
-                        ))}
-                      </div>
-                    </StructuredListCell>
-                  </StructuredListRow>
-                ))}
+                {selectedTestsByCategory.flatMap((group) =>
+                  group.tests.map((test) => (
+                    <StructuredListRow key={test.id}>
+                      <StructuredListCell className={styles.reviewCategoryCell}>
+                        {group.categoryLabel}
+                      </StructuredListCell>
+                      <StructuredListCell>{test.label}</StructuredListCell>
+                      <StructuredListCell>{formatPrice(priceOf(test.id), currency)}</StructuredListCell>
+                    </StructuredListRow>
+                  )),
+                )}
+                <StructuredListRow>
+                  <StructuredListCell />
+                  <StructuredListCell>
+                    <strong>{t('total', 'Total')}</strong>
+                  </StructuredListCell>
+                  <StructuredListCell>
+                    <strong>{formatPrice(totalPrice, currency)}</strong>
+                  </StructuredListCell>
+                </StructuredListRow>
               </StructuredListBody>
             </StructuredListWrapper>
           </Tile>

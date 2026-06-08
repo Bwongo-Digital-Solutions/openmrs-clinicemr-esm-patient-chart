@@ -1,9 +1,10 @@
 import React, { useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { Dropdown, InlineLoading, InlineNotification, Modal, NumberInput } from '@carbon/react';
+import { InlineNotification, Modal, NumberInput } from '@carbon/react';
 import { showSnackbar, useConfig } from '@openmrs/esm-framework';
 import type { PaymentManagerConfig } from '../config-schema';
-import { payLocalBill, billTotal, usePaymentModes, type LocalBill } from '../billing/billing.resource';
+import { payLocalBill, billTotal, type LocalBill } from '../billing/billing.resource';
+import PayerSelector, { formatPayer, type PayerSelection } from '../billing/payer-selector.component';
 import { addNotification } from '../notifications/payment-notifications-store';
 
 interface ReceivePaymentModalProps {
@@ -15,11 +16,10 @@ interface ReceivePaymentModalProps {
 const ReceivePaymentModal: React.FC<ReceivePaymentModalProps> = ({ bill, onClose, onPaid }) => {
   const { t } = useTranslation();
   const config = useConfig<PaymentManagerConfig>();
-  const { paymentModes, isLoading } = usePaymentModes();
 
   const total = billTotal(bill);
 
-  const [paymentModeUuid, setPaymentModeUuid] = useState('');
+  const [payer, setPayer] = useState<PayerSelection>({ clientType: 'PRIVATE', payer: '' });
   const [amountTendered, setAmountTendered] = useState(total);
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -27,14 +27,14 @@ const ReceivePaymentModal: React.FC<ReceivePaymentModalProps> = ({ bill, onClose
   const currencyFmt = (value: number) => `${config.defaultCurrency} ${new Intl.NumberFormat().format(value ?? 0)}`;
 
   const handleSubmit = async () => {
-    if (!paymentModeUuid) {
+    if (!payer.payer) {
       setError(t('selectPaymentMode', 'Select a payment method.'));
       return;
     }
     setSubmitting(true);
     setError(null);
     try {
-      payLocalBill(bill.uuid, { paymentMethod: paymentModeUuid, amountTendered });
+      payLocalBill(bill.uuid, { paymentMethod: formatPayer(payer), amountTendered });
       // Notify the clinician who requested the order that payment is concluded.
       if (bill.requestedByUuid) {
         addNotification({
@@ -70,9 +70,14 @@ const ReceivePaymentModal: React.FC<ReceivePaymentModalProps> = ({ bill, onClose
       onRequestClose={onClose}
       onRequestSubmit={handleSubmit}
     >
-      <p style={{ marginBottom: '1rem' }}>
+      <p style={{ marginBottom: '0.5rem' }}>
         {t('patient', 'Patient')}: <strong>{bill.patientName || bill.patientUuid}</strong>
       </p>
+      {bill.requestedByName && (
+        <p style={{ marginBottom: '1rem' }}>
+          {t('requestedBy', 'Requested by')}: <strong>{bill.requestedByName}</strong>
+        </p>
+      )}
       <ul style={{ marginBottom: '1rem' }}>
         {bill.lineItems.map((li, i) => (
           <li key={i} style={{ display: 'flex', justifyContent: 'space-between' }}>
@@ -86,19 +91,7 @@ const ReceivePaymentModal: React.FC<ReceivePaymentModalProps> = ({ bill, onClose
         <span>{currencyFmt(total)}</span>
       </p>
 
-      {isLoading ? (
-        <InlineLoading description={t('loadingModes', 'Loading payment modes…')} />
-      ) : (
-        <Dropdown
-          id="receive-payment-mode"
-          titleText={t('paymentMode', 'Payment method')}
-          label={t('choosePaymentMode', 'Choose a payment method…')}
-          items={paymentModes}
-          itemToString={(item) => item?.name ?? ''}
-          selectedItem={paymentModes.find((m) => m.uuid === paymentModeUuid) ?? null}
-          onChange={({ selectedItem }) => setPaymentModeUuid(selectedItem?.uuid ?? '')}
-        />
-      )}
+      <PayerSelector id="receive-payer" value={payer} onChange={setPayer} />
       <div style={{ marginTop: '1rem' }}>
         <NumberInput
           id="receive-amount-tendered"
