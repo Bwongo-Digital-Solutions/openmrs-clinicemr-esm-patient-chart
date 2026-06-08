@@ -3,7 +3,6 @@ import { useTranslation } from 'react-i18next';
 import {
   Button,
   DataTable,
-  DataTableSkeleton,
   InlineNotification,
   Table,
   TableBody,
@@ -18,8 +17,7 @@ import { Money, Renew } from '@carbon/react/icons';
 import { formatDate, useConfig, useSession } from '@openmrs/esm-framework';
 import type { PaymentManagerConfig } from '../config-schema';
 import { isCashierUser } from '../roles';
-import { useBills } from '../billing/billing.resource';
-import type { Bill } from '../billing/types';
+import { useLocalBills, billTotal, type LocalBill } from '../billing/billing.resource';
 import ReceivePaymentModal from './receive-payment-modal.component';
 import styles from '../payment-manager.scss';
 
@@ -28,8 +26,8 @@ const PendingPayments: React.FC = () => {
   const session = useSession();
   const config = useConfig<PaymentManagerConfig>();
   const isCashier = isCashierUser(session, config.cashierRoleNames);
-  const { bills, error, isLoading, mutate } = useBills('PENDING');
-  const [activeBill, setActiveBill] = useState<Bill | null>(null);
+  const { bills, mutate } = useLocalBills('PENDING');
+  const [activeBill, setActiveBill] = useState<LocalBill | null>(null);
 
   const currencyFmt = (value: number) => `${config.defaultCurrency} ${new Intl.NumberFormat().format(value ?? 0)}`;
 
@@ -43,17 +41,14 @@ const PendingPayments: React.FC = () => {
 
   const rows = useMemo(
     () =>
-      bills.map((bill) => {
-        const amount = bill.lineItems.reduce((sum, li) => sum + li.price * (li.quantity ?? 1), 0);
-        return {
-          id: bill.uuid ?? Math.random().toString(36),
-          bill,
-          patient: typeof bill.patient === 'string' ? bill.patient : bill.patient?.display ?? '—',
-          items: bill.lineItems.map((li) => li.display ?? li.priceName ?? t('service', 'Service')).join(', '),
-          amount: currencyFmt(amount),
-          created: bill.dateCreated ? formatDate(new Date(bill.dateCreated)) : '—',
-        };
-      }),
+      bills.map((bill) => ({
+        id: bill.uuid,
+        bill,
+        patient: bill.patientName || bill.patientUuid || '—',
+        items: bill.lineItems.map((li) => li.name || t('service', 'Service')).join(', '),
+        amount: currencyFmt(billTotal(bill)),
+        created: bill.createdAt ? formatDate(new Date(bill.createdAt)) : '—',
+      })),
     // eslint-disable-next-line react-hooks/exhaustive-deps
     [bills, config.defaultCurrency],
   );
@@ -84,19 +79,7 @@ const PendingPayments: React.FC = () => {
         </Button>
       </div>
 
-      {error && (
-        <InlineNotification
-          kind="error"
-          lowContrast
-          hideCloseButton
-          title={t('errorLoadingBills', 'Could not load pending payments')}
-          subtitle={String((error as Error)?.message ?? '')}
-        />
-      )}
-
-      {isLoading ? (
-        <DataTableSkeleton headers={headers} rowCount={5} />
-      ) : rows.length === 0 ? (
+      {rows.length === 0 ? (
         <Tile className={styles.emptyTile}>
           <p>{t('noPendingPayments', 'There are no pending payments right now.')}</p>
         </Tile>

@@ -5,8 +5,8 @@ import { Money, Send } from '@carbon/react/icons';
 import { showSnackbar, useConfig, useSession } from '@openmrs/esm-framework';
 import { type OrderBasketExtensionProps, useOrderBasket } from '@openmrs/esm-patient-common-lib';
 import type { PaymentManagerConfig } from '../config-schema';
-import { createBill, useBillableServices, useCashPoints, useProviderUuid } from '../billing/billing.resource';
-import type { BillableService, NewLineItem, ServicePrice } from '../billing/types';
+import { createLocalBill, useBillableServices, type LocalLineItem } from '../billing/billing.resource';
+import type { BillableService, ServicePrice } from '../billing/types';
 import styles from '../payment-manager.scss';
 
 interface PricedOrder {
@@ -31,8 +31,6 @@ function OrderPaymentPanelExtension({ patient }: OrderBasketExtensionProps) {
   const session = useSession();
   const { orders } = useOrderBasket(patient);
   const { billableServices, isLoading } = useBillableServices();
-  const { cashPoints } = useCashPoints();
-  const { providerUuid } = useProviderUuid(session?.user?.uuid);
   const [submitting, setSubmitting] = useState(false);
 
   const currencyFmt = (value: number) => `${config.defaultCurrency} ${new Intl.NumberFormat().format(value ?? 0)}`;
@@ -51,15 +49,13 @@ function OrderPaymentPanelExtension({ patient }: OrderBasketExtensionProps) {
 
   const total = useMemo(() => pricedOrders.reduce((sum, o) => sum + (o.price?.price ?? 0), 0), [pricedOrders]);
 
-  const billableLineItems = useMemo<NewLineItem[]>(
+  const billableLineItems = useMemo<LocalLineItem[]>(
     () =>
       pricedOrders
         .filter((o) => o.service && o.price)
         .map((o) => ({
-          billableServiceUuid: o.service!.uuid,
+          name: o.service!.name,
           price: o.price!.price,
-          priceUuid: o.price!.uuid,
-          priceName: o.price!.name,
           quantity: 1,
         })),
     [pricedOrders],
@@ -69,24 +65,18 @@ function OrderPaymentPanelExtension({ patient }: OrderBasketExtensionProps) {
     return null;
   }
 
-  const cashPointUuid = config.cashPointUuid || cashPoints[0]?.uuid;
-  const canSend = billableLineItems.length > 0 && !!cashPointUuid && !!providerUuid && !submitting;
+  const patientName = patient?.name?.[0]?.text ?? '';
+  const canSend = billableLineItems.length > 0 && !submitting;
 
   const sendForPayment = async () => {
-    if (!cashPointUuid || !providerUuid) {
-      showSnackbar({
-        kind: 'error',
-        title: t('cannotSend', 'Cannot send payment request'),
-        subtitle: t('missingBillingConfig', 'Billing is not fully configured (cash point / provider).'),
-      });
-      return;
-    }
     setSubmitting(true);
     try {
-      await createBill(config.billingApiBasePath, {
+      createLocalBill({
         patientUuid: patient.id,
-        cashPointUuid,
-        cashierUuid: providerUuid,
+        patientName,
+        cashierUuid: session?.user?.uuid ?? '',
+        requestedByUuid: session?.user?.uuid,
+        requestedByName: session?.user?.display,
         lineItems: billableLineItems,
         status: 'PENDING',
       });

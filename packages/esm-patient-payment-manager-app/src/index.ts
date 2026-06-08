@@ -45,3 +45,8 @@ export const paymentManagerNavAction = getAsyncLifecycle(
   () => import('./nav/payment-manager-nav-action.component'),
   options,
 );
+
+export const paymentNotificationsAction = getAsyncLifecycle(
+  () => import('./notifications/payment-notifications-action.component'),
+  options,
+);

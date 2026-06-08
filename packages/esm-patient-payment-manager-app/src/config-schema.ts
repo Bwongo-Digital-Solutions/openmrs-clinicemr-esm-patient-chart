@@ -22,11 +22,32 @@ export const configSchema = {
     _description:
       'Names of clinical provider roles that are NOT allowed to access the Payment Manager or register patients. Members of these roles are blocked from registration and payment pages.',
   },
+  billableServices: {
+    _type: Type.Array,
+    _elements: {
+      uuid: { _type: Type.String },
+      name: { _type: Type.String },
+      price: { _type: Type.Number },
+    },
+    _default: [
+      { uuid: 'consultation', name: 'Consultation', price: 10000 },
+      { uuid: 'lab-general', name: 'Laboratory test', price: 15000 },
+      { uuid: 'pharmacy-general', name: 'Pharmacy / Drugs', price: 5000 },
+    ],
+    _description:
+      'Billable services (with prices) offered by the facility. These populate the billable-service accordion and order pricing. Configure these in the distro since the billing backend module is not installed.',
+  },
+  paymentMethods: {
+    _type: Type.Array,
+    _elements: { _type: Type.String },
+    _default: ['Cash', 'Mobile Money', 'Insurance', 'Bank Transfer'],
+    _description: 'Payment methods configured for the facility. These populate the payment-method selectors.',
+  },
   consultationBillableServiceUuid: {
     _type: Type.String,
     _default: '',
     _description:
-      'UUID of the billable service representing a consultation fee. When set, it is pre-selected on the consultation payment gate. If empty, the cashier picks from all billable services.',
+      'UUID of the billable service (from billableServices) representing a consultation fee. When set, it is pre-selected on the consultation payment gate. If empty, the cashier picks from all billable services.',
   },
   registrationListPath: {
     _type: Type.String,
@@ -67,9 +88,17 @@ export const configSchema = {
   },
 };
 
+export interface ConfiguredBillableService {
+  uuid: string;
+  name: string;
+  price: number;
+}
+
 export interface PaymentManagerConfig {
   cashierRoleNames: string[];
   providerRoleNames: string[];
+  billableServices: ConfiguredBillableService[];
+  paymentMethods: string[];
   consultationBillableServiceUuid: string;
   registrationListPath: string;
   consultationPaymentPath: string;

@@ -6,7 +6,7 @@ import type { PaymentManagerConfig } from '../config-schema';
 import { isCashierUser } from '../roles';
 import { addRegisteredPatient } from '../registered-patients-store';
 import { clearConsultationToken, getConsultationToken } from './consultation-session';
-import { createBill, processPayment, useCashPoints, useProviderUuid } from '../billing/billing.resource';
+import { createLocalBill } from '../billing/billing.resource';
 
 /**
  * One-shot redirect target the patient-registration app sends the cashier to
@@ -24,8 +24,6 @@ const PostRegistrationRedirect: React.FC = () => {
   const { t } = useTranslation();
   const session = useSession();
   const config = useConfig<PaymentManagerConfig>();
-  const { cashPoints } = useCashPoints();
-  const { providerUuid } = useProviderUuid(session?.user?.uuid);
   const handled = useRef(false);
 
   useEffect(() => {
@@ -46,9 +44,9 @@ const PostRegistrationRedirect: React.FC = () => {
       return;
     }
 
-    // Cashier: settle the consultation fee against the new patient.
+    // Cashier: settle the consultation fee against the new patient as a PAID
+    // bill in the local store (no billing backend to persist to).
     const token = getConsultationToken(session.user.uuid);
-    const cashPointUuid = config.cashPointUuid || cashPoints[0]?.uuid;
 
     const finish = () => {
       handled.current = true;
@@ -56,50 +54,40 @@ const PostRegistrationRedirect: React.FC = () => {
       navigate({ to: `\${openmrsSpaBase}/${config.registrationListPath}` });
     };
 
-    if (token && patientUuid && cashPointUuid && providerUuid) {
-      createBill(config.billingApiBasePath, {
-        patientUuid,
-        cashPointUuid,
-        cashierUuid: providerUuid,
-        lineItems: [
-          {
-            billableServiceUuid: token.serviceUuid,
-            price: token.price,
-            priceUuid: token.priceUuid,
-            priceName: token.priceName,
-            quantity: 1,
-          },
-        ],
-        status: 'PENDING',
-      })
-        .then((res) =>
-          res?.data
-            ? processPayment(config.billingApiBasePath, {
-                bill: res.data,
-                paymentModeUuid: token.paymentModeUuid,
-                amountTendered: token.amountTendered,
-              })
-            : null,
-        )
-        .then(() => {
-          showSnackbar({
-            kind: 'success',
-            title: t('consultationBilled', 'Consultation fee settled'),
-            subtitle: token.serviceName,
-          });
-        })
-        .catch((err) => {
-          showSnackbar({
-            kind: 'error',
-            title: t('billError', 'Could not record consultation bill'),
-            subtitle: String(err?.message ?? ''),
-          });
-        })
-        .finally(finish);
+    if (token && patientUuid) {
+      try {
+        createLocalBill({
+          patientUuid,
+          cashierUuid: session.user.uuid,
+          lineItems: [
+            {
+              name: token.serviceName,
+              price: token.price,
+              quantity: 1,
+            },
+          ],
+          status: 'PAID',
+          paymentMethod: token.paymentModeUuid,
+          amountTendered: token.amountTendered,
+        });
+        showSnackbar({
+          kind: 'success',
+          title: t('consultationBilled', 'Consultation fee settled'),
+          subtitle: token.serviceName,
+        });
+      } catch (err) {
+        showSnackbar({
+          kind: 'error',
+          title: t('billError', 'Could not record consultation bill'),
+          subtitle: String((err as Error)?.message ?? ''),
+        });
+      } finally {
+        finish();
+      }
     } else {
       finish();
     }
-  }, [session, config, cashPoints, providerUuid, t]);
+  }, [session, config, t]);
 
   return (
     <div style={{ padding: '2rem' }}>

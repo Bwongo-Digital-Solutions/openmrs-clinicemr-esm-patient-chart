@@ -1,13 +1,13 @@
-import React, { useMemo, useState } from 'react';
+import React, { useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Dropdown, InlineLoading, InlineNotification, Modal, NumberInput } from '@carbon/react';
 import { showSnackbar, useConfig } from '@openmrs/esm-framework';
 import type { PaymentManagerConfig } from '../config-schema';
-import { processPayment, usePaymentModes } from '../billing/billing.resource';
-import type { Bill } from '../billing/types';
+import { payLocalBill, billTotal, usePaymentModes, type LocalBill } from '../billing/billing.resource';
+import { addNotification } from '../notifications/payment-notifications-store';
 
 interface ReceivePaymentModalProps {
-  bill: Bill;
+  bill: LocalBill;
   onClose: () => void;
   onPaid: () => void;
 }
@@ -17,10 +17,7 @@ const ReceivePaymentModal: React.FC<ReceivePaymentModalProps> = ({ bill, onClose
   const config = useConfig<PaymentManagerConfig>();
   const { paymentModes, isLoading } = usePaymentModes();
 
-  const total = useMemo(
-    () => bill.lineItems.reduce((sum, li) => sum + li.price * (li.quantity ?? 1), 0),
-    [bill.lineItems],
-  );
+  const total = billTotal(bill);
 
   const [paymentModeUuid, setPaymentModeUuid] = useState('');
   const [amountTendered, setAmountTendered] = useState(total);
@@ -37,7 +34,19 @@ const ReceivePaymentModal: React.FC<ReceivePaymentModalProps> = ({ bill, onClose
     setSubmitting(true);
     setError(null);
     try {
-      await processPayment(config.billingApiBasePath, { bill, paymentModeUuid, amountTendered });
+      payLocalBill(bill.uuid, { paymentMethod: paymentModeUuid, amountTendered });
+      // Notify the clinician who requested the order that payment is concluded.
+      if (bill.requestedByUuid) {
+        addNotification({
+          recipientUuid: bill.requestedByUuid,
+          title: t('paymentConcluded', 'Payment concluded'),
+          message: t('paymentConcludedFor', '{{patient}} has paid {{amount}} for the requested order.', {
+            patient: bill.patientName || t('thePatient', 'The patient'),
+            amount: currencyFmt(total),
+          }),
+          patientUuid: bill.patientUuid,
+        });
+      }
       showSnackbar({
         kind: 'success',
         title: t('paymentProcessed', 'Payment processed'),
@@ -62,13 +71,12 @@ const ReceivePaymentModal: React.FC<ReceivePaymentModalProps> = ({ bill, onClose
       onRequestSubmit={handleSubmit}
     >
       <p style={{ marginBottom: '1rem' }}>
-        {t('patient', 'Patient')}:{' '}
-        <strong>{typeof bill.patient === 'string' ? bill.patient : bill.patient?.display}</strong>
+        {t('patient', 'Patient')}: <strong>{bill.patientName || bill.patientUuid}</strong>
       </p>
       <ul style={{ marginBottom: '1rem' }}>
         {bill.lineItems.map((li, i) => (
-          <li key={li.uuid ?? i} style={{ display: 'flex', justifyContent: 'space-between' }}>
-            <span>{li.display ?? li.priceName ?? t('service', 'Service')}</span>
+          <li key={i} style={{ display: 'flex', justifyContent: 'space-between' }}>
+            <span>{li.name || t('service', 'Service')}</span>
             <span>{currencyFmt(li.price * (li.quantity ?? 1))}</span>
           </li>
         ))}

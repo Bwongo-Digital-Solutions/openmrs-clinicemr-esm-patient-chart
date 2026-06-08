@@ -1,62 +1,45 @@
 import useSWR from 'swr';
 import { openmrsFetch, restBaseUrl, useConfig } from '@openmrs/esm-framework';
-import type { Bill, BillableService, CashPoint, NewLineItem, PaymentMode } from './types';
-import type { PaymentManagerConfig } from '../config-schema';
-
-function useBillingBase() {
-  const config = useConfig() as PaymentManagerConfig;
-  return `${restBaseUrl}/${config.billingApiBasePath || 'cashier'}`;
-}
-
-const billableServiceRep =
-  'custom:(uuid,name,shortName,serviceStatus,serviceType:(uuid,display),servicePrices:(uuid,name,price))';
-
-const billRep =
-  'custom:(uuid,display,status,receiptNumber,dateCreated,patient:(uuid,display),cashier:(uuid,display),' +
-  'lineItems:(uuid,display,quantity,price,priceName,paymentStatus,item,billableService),' +
-  'payments:(uuid,amount,amountTendered,instanceType:(uuid,name)))';
+import type { BillableService, PaymentMode } from './types';
+import type { ConfiguredBillableService, PaymentManagerConfig } from '../config-schema';
 
 interface RestResults<T> {
   results: T[];
 }
 
 /**
- * All active billable services with their service prices.
+ * Billable services come from distro configuration (`billableServices`) because
+ * the billing/cashier backend OMOD is not installed. Each configured service is
+ * exposed with a single "Default" service price so existing UI keeps working.
  */
 export function useBillableServices() {
-  const billingBase = useBillingBase();
-  const url = `${billingBase}/billableService?v=${encodeURIComponent(billableServiceRep)}`;
-  const { data, error, isLoading, mutate } = useSWR<{ data: RestResults<BillableService> }>(url, openmrsFetch);
-  const services = (data?.data?.results ?? []).filter(
-    (s) => !s.serviceStatus || s.serviceStatus.toUpperCase() === 'ENABLED',
+  const config = useConfig<PaymentManagerConfig>();
+  const billableServices: BillableService[] = (config.billableServices ?? []).map(
+    (s: ConfiguredBillableService) => ({
+      uuid: s.uuid,
+      name: s.name,
+      serviceStatus: 'ENABLED',
+      servicePrices: [{ uuid: `${s.uuid}-default`, name: 'Default', price: s.price ?? 0 }],
+    }),
   );
-  return { billableServices: services, error, isLoading, mutate };
+  return { billableServices, error: undefined, isLoading: false, mutate: () => {} };
 }
 
 /**
- * Available (non-retired) payment modes configured in the cashier module.
+ * Payment modes come from distro configuration (`paymentMethods`).
  */
 export function usePaymentModes() {
-  const billingBase = useBillingBase();
-  const url = `${billingBase}/paymentMode?v=custom:(uuid,name,description,retired)`;
-  const { data, error, isLoading } = useSWR<{ data: RestResults<PaymentMode> }>(url, openmrsFetch);
-  const paymentModes = (data?.data?.results ?? []).filter((m) => !m.retired);
-  return { paymentModes, error, isLoading };
+  const config = useConfig<PaymentManagerConfig>();
+  const paymentModes: PaymentMode[] = (config.paymentMethods ?? []).map((name: string) => ({
+    uuid: name,
+    name,
+  }));
+  return { paymentModes, error: undefined, isLoading: false };
 }
 
 /**
- * Cash points configured in the cashier module.
- */
-export function useCashPoints() {
-  const billingBase = useBillingBase();
-  const url = `${billingBase}/cashPoint?v=custom:(uuid,name,retired)`;
-  const { data, error, isLoading } = useSWR<{ data: RestResults<CashPoint> }>(url, openmrsFetch);
-  const cashPoints = (data?.data?.results ?? []).filter((c) => !c.retired);
-  return { cashPoints, error, isLoading };
-}
-
-/**
- * Resolve the provider record for a given user uuid (bills require a cashier=provider uuid).
+ * Resolve the provider record for a given user uuid. The core `provider` REST
+ * resource is part of webservices.rest and is always available.
  */
 export function useProviderUuid(userUuid: string | undefined) {
   const url = userUuid ? `${restBaseUrl}/provider?user=${userUuid}&v=custom:(uuid,display)` : null;
@@ -67,112 +50,14 @@ export function useProviderUuid(userUuid: string | undefined) {
   return { providerUuid: data?.data?.results?.[0]?.uuid, error, isLoading };
 }
 
-/**
- * Bills filtered by status (defaults to PENDING) — used by the cashier queue.
- */
-export function useBills(status: string = 'PENDING') {
-  const billingBase = useBillingBase();
-  const url = `${billingBase}/bill?status=${encodeURIComponent(status)}&v=${encodeURIComponent(billRep)}`;
-  const { data, error, isLoading, mutate } = useSWR<{ data: RestResults<Bill> }>(url, openmrsFetch);
-  return { bills: data?.data?.results ?? [], error, isLoading, mutate };
-}
-
-/**
- * Bills for a single patient.
- */
-export function usePatientBills(patientUuid: string | undefined) {
-  const billingBase = useBillingBase();
-  const url = patientUuid ? `${billingBase}/bill?patientUuid=${patientUuid}&v=${encodeURIComponent(billRep)}` : null;
-  const { data, error, isLoading, mutate } = useSWR<{ data: RestResults<Bill> }>(url, openmrsFetch);
-  return { bills: data?.data?.results ?? [], error, isLoading, mutate };
-}
-
-interface CreateBillArgs {
-  patientUuid: string;
-  cashPointUuid: string;
-  cashierUuid: string;
-  lineItems: NewLineItem[];
-  status?: 'PENDING' | 'PAID';
-}
-
-/**
- * Create a new (PENDING by default) bill with one or more line items.
- */
-export async function createBill(
-  basePath: string,
-  {
-    patientUuid,
-    cashPointUuid,
-    cashierUuid,
-    lineItems,
-    status = 'PENDING',
-  }: CreateBillArgs
-) {
-  const billingBase = `${restBaseUrl}/${basePath || 'cashier'}`;
-  const payload = {
-    cashPoint: cashPointUuid,
-    cashier: cashierUuid,
-    patient: patientUuid,
-    status,
-    lineItems: lineItems.map((li, index) => ({
-      billableService: li.billableServiceUuid,
-      quantity: li.quantity ?? 1,
-      price: li.price,
-      priceName: li.priceName ?? 'Default',
-      priceUuid: li.priceUuid,
-      lineItemOrder: index,
-      paymentStatus: status,
-    })),
-    payments: [],
-  };
-
-  return openmrsFetch<Bill>(`${billingBase}/bill`, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: payload,
-  });
-}
-
-interface ProcessPaymentArgs {
-  bill: Bill;
-  paymentModeUuid: string;
-  amountTendered: number;
-}
-
-/**
- * Record a payment against an existing bill and mark its line items + bill PAID.
- */
-export async function processPayment(basePath: string, { bill, paymentModeUuid, amountTendered }: ProcessPaymentArgs) {
-  const billingBase = `${restBaseUrl}/${basePath || 'cashier'}`;
-  const total = bill.lineItems.reduce((sum, li) => sum + li.price * (li.quantity ?? 1), 0);
-  const payload = {
-    cashPoint: typeof bill.cashPoint === 'string' ? bill.cashPoint : bill.cashPoint?.uuid,
-    cashier: typeof bill.cashier === 'string' ? bill.cashier : bill.cashier?.uuid,
-    patient: typeof bill.patient === 'string' ? bill.patient : bill.patient?.uuid,
-    status: 'PAID',
-    lineItems: bill.lineItems.map((li) => ({
-      uuid: li.uuid,
-      billableService: typeof li.billableService === 'string' ? li.billableService : li.billableService?.uuid,
-      item: li.item,
-      quantity: li.quantity ?? 1,
-      price: li.price,
-      priceName: li.priceName ?? 'Default',
-      priceUuid: li.priceUuid,
-      paymentStatus: 'PAID',
-    })),
-    payments: [
-      ...(bill.payments ?? []),
-      {
-        instanceType: paymentModeUuid,
-        amount: total,
-        amountTendered,
-      },
-    ],
-  };
-
-  return openmrsFetch<Bill>(`${billingBase}/bill/${bill.uuid}`, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: payload,
-  });
-}
+// Bill creation, payment and listing are handled locally in `local-bill-store`
+// (re-exported below) because there is no billing backend to persist to.
+export {
+  createLocalBill,
+  payLocalBill,
+  useLocalBills,
+  getBillsForPatient,
+  getAmountPaidForPatient,
+  billTotal,
+} from './local-bill-store';
+export type { LocalBill, LocalLineItem, LocalBillStatus } from './local-bill-store';

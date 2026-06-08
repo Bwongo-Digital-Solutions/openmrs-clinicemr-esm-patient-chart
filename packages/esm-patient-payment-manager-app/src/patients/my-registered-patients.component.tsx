@@ -21,6 +21,7 @@ import { formatDate, navigate, openmrsFetch, restBaseUrl, useConfig, useSession 
 import type { PaymentManagerConfig } from '../config-schema';
 import { isCashierUser } from '../roles';
 import { getRegisteredPatients } from '../registered-patients-store';
+import { getAmountPaidForPatient, useLocalBills } from '../billing/billing.resource';
 import styles from '../payment-manager.scss';
 
 interface PatientResource {
@@ -54,6 +55,10 @@ const MyRegisteredPatients: React.FC = () => {
   const isCashier = isCashierUser(session, config.cashierRoleNames);
 
   const entries = useMemo(() => (currentUserUuid ? getRegisteredPatients(currentUserUuid) : []), [currentUserUuid]);
+  // Subscribe to the local bill store so amount-paid figures update live.
+  const { bills } = useLocalBills();
+
+  const currencyFmt = (value: number) => `${config.defaultCurrency} ${new Intl.NumberFormat().format(value ?? 0)}`;
 
   const [currentPage, setCurrentPage] = useState(1);
   const [pageSize, setPageSize] = useState(config.pageSize ?? 25);
@@ -80,6 +85,7 @@ const MyRegisteredPatients: React.FC = () => {
           gender: p.person?.gender ?? '—',
           age: p.person?.age != null ? String(p.person.age) : '—',
           registeredOn: entry.registeredAt ? formatDate(new Date(entry.registeredAt)) : '—',
+          amountPaid: currencyFmt(getAmountPaidForPatient(p.uuid)),
         };
       })
       .filter(Boolean) as Array<{
@@ -89,8 +95,10 @@ const MyRegisteredPatients: React.FC = () => {
       gender: string;
       age: string;
       registeredOn: string;
+      amountPaid: string;
     }>;
-  }, [data, entries]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [data, entries, bills, config.defaultCurrency]);
 
   const pagedRows = useMemo(() => {
     const start = (currentPage - 1) * pageSize;
@@ -105,6 +113,7 @@ const MyRegisteredPatients: React.FC = () => {
     { key: 'gender', header: t('gender', 'Gender') },
     { key: 'age', header: t('age', 'Age') },
     { key: 'registeredOn', header: t('registeredOn', 'Registered on') },
+    { key: 'amountPaid', header: t('amountPaid', 'Amount paid') },
     { key: 'actions', header: '' },
   ];
 
