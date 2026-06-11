@@ -1,6 +1,7 @@
 {
   "actions": "Tindakan",
   "actionsMenu": "Actions menu",
+  "activeMedicationRevisionCannotStartInFuture": "Revisions to an active medication must start today or earlier.",
   "activeMedicationsDisplayText": "active medications",
   "activeMedicationsHeaderTitle": "Active medications",
   "activeMedicationsTableTitle": "Obat Aktif",
@@ -51,6 +52,9 @@
   "female": "Perempuan",
   "freeDosageErrorMessage": "Add free dosage note",
   "freeTextDosage": "Dosis teks bebas",
+  "futureMedicationsDisplayText": "upcoming medications",
+  "futureMedicationsHeaderTitle": "Upcoming medications",
+  "futureMedicationsTableTitle": "Upcoming Medications",
   "goToDrugOrderForm": "Formulir pesanan",
   "increment": "Tambah",
   "indication": "Indikasi",

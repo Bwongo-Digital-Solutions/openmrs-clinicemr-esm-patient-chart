@@ -47,6 +47,13 @@ export interface AddDrugOrderProps {
   patientUuid: string;
   visitContext: Visit;
   closeWorkspace: Workspace2DefinitionProps['closeWorkspace'];
+
+  /**
+   * Optional launcher for the allergy form, provided when this workspace runs outside the patient
+   * chart. Forwarded to the allergy "+" affordance so it opens the form in the host's workspace
+   * group rather than the chart's.
+   */
+  launchAllergyForm?: () => void;
 }
 
 /**
@@ -62,6 +69,7 @@ const AddDrugOrder: React.FC<AddDrugOrderProps> = ({
   patientUuid,
   visitContext,
   closeWorkspace,
+  launchAllergyForm,
 }) => {
   const { t } = useTranslation();
   const isTablet = useLayoutType() === 'tablet';
@@ -76,6 +84,7 @@ const AddDrugOrder: React.FC<AddDrugOrderProps> = ({
   const { mutate: mutateOrders } = useMutatePatientOrders(patientUuid);
 
   const { drugCategoryConceptSets } = useConfig<ConfigObject>();
+
   const {
     conceptSets,
     isLoading: isLoadingConceptSets,
@@ -114,40 +123,44 @@ const AddDrugOrder: React.FC<AddDrugOrderProps> = ({
     [orders, setOrders, closeWorkspace],
   );
 
-  // If editing an existing order, on save, we directly submit the modified order to the server
-  // and do not save it to the order basket.
+  // For REVISE, submit directly to the server against the previous order's encounter.
+  // RENEW flows through the order basket and is signed via postOrdersOnNewEncounter.
   const submitDrugOrderToServer = useCallback(
     async (finalizedOrder: DrugOrderBasketItem) => {
-      postOrder(
+      const handleSuccess = () => {
+        clearOrders();
+        mutateOrders();
+
+        /* Translation keys used by showOrderSuccessToast:
+         * t('ordersCompleted', 'Orders completed')
+         * t('orderPlaced', 'Order placed')
+         * t('ordersPlaced', 'Orders placed')
+         * t('orderUpdated', 'Order updated')
+         * t('ordersUpdated', 'Orders updated')
+         * t('orderDiscontinued', 'Order discontinued')
+         * t('ordersDiscontinued', 'Orders discontinued')
+         * t('orderedFor', 'Placed order for')
+         * t('updated', 'Updated')
+         * t('discontinued', 'Discontinued')
+         */
+        showOrderSuccessToast('@openmrs/esm-patient-medications-app', [finalizedOrder]);
+        closeWorkspace({ discardUnsavedChanges: true });
+      };
+
+      const handleError = (error: { message?: string }) => {
+        showSnackbar({
+          isLowContrast: false,
+          kind: 'error',
+          title: t('errorSavingDrugOrder', 'Error saving drug order'),
+          subtitle: error.message,
+        });
+      };
+
+      return postOrder(
         prepMedicationOrderPostData(finalizedOrder, patientUuid, finalizedOrder?.encounterUuid, orderToEditOrdererUuid),
       )
-        .then(() => {
-          clearOrders();
-          mutateOrders();
-
-          /* Translation keys used by showOrderSuccessToast:
-           * t('ordersCompleted', 'Orders completed')
-           * t('orderPlaced', 'Order placed')
-           * t('ordersPlaced', 'Orders placed')
-           * t('orderUpdated', 'Order updated')
-           * t('ordersUpdated', 'Orders updated')
-           * t('orderDiscontinued', 'Order discontinued')
-           * t('ordersDiscontinued', 'Orders discontinued')
-           * t('orderedFor', 'Placed order for')
-           * t('updated', 'Updated')
-           * t('discontinued', 'Discontinued')
-           */
-          showOrderSuccessToast('@openmrs/esm-patient-medications-app', [finalizedOrder]);
-          closeWorkspace({ discardUnsavedChanges: true });
-        })
-        .catch((error) => {
-          showSnackbar({
-            isLowContrast: false,
-            kind: 'error',
-            title: t('errorSavingDrugOrder', 'Error saving drug order'),
-            subtitle: error.message,
-          });
-        });
+        .then(handleSuccess)
+        .catch(handleError);
     },
     [clearOrders, closeWorkspace, mutateOrders, patientUuid, t, orderToEditOrdererUuid],
   );
@@ -189,6 +202,7 @@ const AddDrugOrder: React.FC<AddDrugOrderProps> = ({
                     openOrderForm={openOrderForm}
                     searchTerm={searchTerm}
                     onSearchTermChange={setSearchTerm}
+                    launchAllergyForm={launchAllergyForm}
                   />
                 </TabPanel>
                 <TabPanel>
@@ -214,6 +228,7 @@ const AddDrugOrder: React.FC<AddDrugOrderProps> = ({
               openOrderForm={openOrderForm}
               searchTerm={searchTerm}
               onSearchTermChange={setSearchTerm}
+              launchAllergyForm={launchAllergyForm}
             />
           </div>
         )}
@@ -229,6 +244,7 @@ const AddDrugOrder: React.FC<AddDrugOrderProps> = ({
         visitContext={visitContext}
         saveButtonText={t('saveOrder', 'Save order')}
         workspaceTitle={workspaceTitle}
+        launchAllergyForm={launchAllergyForm}
       />
     );
   }

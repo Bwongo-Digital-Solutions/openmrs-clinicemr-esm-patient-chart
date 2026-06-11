@@ -1,6 +1,7 @@
 {
   "actions": "Actions",
   "actionsMenu": "Actions menu",
+  "activeMedicationRevisionCannotStartInFuture": "Revisions to an active medication must start today or earlier.",
   "activeMedicationsDisplayText": "active medications",
   "activeMedicationsHeaderTitle": "Active medications",
   "activeMedicationsTableTitle": "កំពង់ប្រើប្រាស់ឱសថ",
@@ -51,6 +52,9 @@
   "female": "ស្រី",
   "freeDosageErrorMessage": "Add free dosage note",
   "freeTextDosage": "លំហទំនេរសម្រាប់វាយអត្ថបទកំរិតប្រើប្រាស់",
+  "futureMedicationsDisplayText": "upcoming medications",
+  "futureMedicationsHeaderTitle": "Upcoming medications",
+  "futureMedicationsTableTitle": "Upcoming Medications",
   "goToDrugOrderForm": "ទម្រង់គំរូវេជ្ជបញ្ជា",
   "increment": "បង្កើន",
   "indication": "ការចង្អុលបង្ហាញ",

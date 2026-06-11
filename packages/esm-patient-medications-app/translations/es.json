@@ -1,6 +1,7 @@
 {
   "actions": "Acciones",
   "actionsMenu": "Actions menu",
+  "activeMedicationRevisionCannotStartInFuture": "Revisions to an active medication must start today or earlier.",
   "activeMedicationsDisplayText": "medicamentos activos",
   "activeMedicationsHeaderTitle": "Medicamentos activos",
   "activeMedicationsTableTitle": "Medicamentos Activos",
@@ -51,6 +52,9 @@
   "female": "Femenino",
   "freeDosageErrorMessage": "Añadir nota de dosificación libre",
   "freeTextDosage": "Dosificación en texto libre",
+  "futureMedicationsDisplayText": "upcoming medications",
+  "futureMedicationsHeaderTitle": "Upcoming medications",
+  "futureMedicationsTableTitle": "Upcoming Medications",
   "goToDrugOrderForm": "Formulario de orden",
   "increment": "Incrementar",
   "indication": "Indicación",

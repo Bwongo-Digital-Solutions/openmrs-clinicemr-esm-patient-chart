@@ -1,4 +1,5 @@
 import React from 'react';
+import { vi, describe, it, expect, test } from 'vitest';
 import userEvent from '@testing-library/user-event';
 import { render, screen } from '@testing-library/react';
 import { getByTextWithMarkup } from 'tools';
@@ -8,7 +9,7 @@ import { type FilterContextProps } from '../filter/filter-types';
 import FilterContext from '../filter/filter-context';
 import GroupedTimeline from './grouped-timeline.component';
 
-const mockShowModal = jest.mocked(showModal);
+const mockShowModal = vi.mocked(showModal);
 
 describe('GroupedTimeline', () => {
   const mockFilterContext: FilterContextProps = {
@@ -22,10 +23,10 @@ describe('GroupedTimeline', () => {
     lowestParents: mockGroupedResults['lowestParents'],
     totalResultsCount: 0,
     isLoading: false,
-    initialize: jest.fn(),
-    toggleVal: jest.fn(),
-    updateParent: jest.fn(),
-    resetTree: jest.fn(),
+    initialize: vi.fn(),
+    toggleVal: vi.fn(),
+    updateParent: vi.fn(),
+    resetTree: vi.fn(),
     roots: [],
     tests: {},
     filteredResultsCount: 0,
@@ -138,6 +139,61 @@ describe('GroupedTimeline', () => {
     // expect(screen.queryByText('Serum glutamic-oxaloacetic transaminase')).not.toBeInTheDocument();
     // expect(screen.queryByText('Alkaline phosphatase')).not.toBeInTheDocument();
     // expect(screen.queryByText('Total bilirubin')).not.toBeInTheDocument();
+  });
+
+  it('keeps timeline rows visible when filtering by a collapsed branch alias', () => {
+    const primaryFlatName = 'Hematology-Complete blood count-Platelets';
+    const selectedFlatName = 'Chemistry-Complete blood count-Platelets';
+    const obs = {
+      obsDatetime: '2024-11-04T05:48:00.000Z',
+      value: '56.0',
+      interpretation: 'LOW' as const,
+    };
+
+    renderGroupedTimeline({
+      ...mockFilterContext,
+      activeTests: [selectedFlatName],
+      someChecked: true,
+      tableData: [
+        {
+          key: 'Complete blood count',
+          date: '2024-11-04',
+          flatName: primaryFlatName,
+          entries: [
+            {
+              ...obs,
+              key: primaryFlatName,
+              display: 'Platelets',
+              flatName: primaryFlatName,
+              flatNames: [primaryFlatName, selectedFlatName],
+              hasData: true,
+              range: '',
+              conceptUuid: '729AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA',
+            },
+          ],
+        },
+      ],
+      timelineData: {
+        data: {
+          parsedTime: mockFilterContext.timelineData.data.parsedTime,
+          panelName: 'timeline',
+          rowData: [
+            {
+              display: 'Platelets',
+              flatName: selectedFlatName,
+              conceptUuid: '729AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA',
+              hasData: true,
+              obs: [obs],
+              entries: [obs],
+            },
+          ],
+        },
+        loaded: true,
+      },
+    } as FilterContextProps);
+
+    expect(screen.getByText('Platelets')).toBeInTheDocument();
+    expect(screen.getByText('56.0')).toBeInTheDocument();
   });
 
   it('correctly applies interpretation styling to results', () => {
