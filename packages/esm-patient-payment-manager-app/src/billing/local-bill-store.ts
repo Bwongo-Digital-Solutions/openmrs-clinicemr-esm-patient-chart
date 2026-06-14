@@ -23,6 +23,8 @@ export type ClientType = 'PRIVATE' | 'CORPORATE';
 
 export interface LocalBill {
   uuid: string;
+  /** Short human-readable order/request id, assigned at creation. */
+  orderId: string;
   /** Human-readable receipt/invoice number, assigned when the bill is paid. */
   receiptNumber?: string;
   patientUuid: string;
@@ -90,6 +92,12 @@ export function generateReceiptNumber(): string {
   return `RCPT-${y}${m}${d}-${seq}`;
 }
 
+/** Generates a short human-readable order/request id, e.g. ORD-4821. */
+export function generateOrderId(): string {
+  const seq = Math.floor(Math.random() * 9000 + 1000);
+  return `ORD-${seq}`;
+}
+
 export function billTotal(bill: Pick<LocalBill, 'lineItems'>): number {
   return bill.lineItems.reduce((sum, li) => sum + (li.price ?? 0) * (li.quantity ?? 1), 0);
 }
@@ -114,6 +122,7 @@ export function createLocalBill(args: CreateLocalBillArgs): LocalBill {
   const status = args.status ?? 'PENDING';
   const bill: LocalBill = {
     uuid: generateUuid(),
+    orderId: generateOrderId(),
     receiptNumber: status === 'PAID' ? generateReceiptNumber() : undefined,
     patientUuid: args.patientUuid,
     patientName: args.patientName ?? '',

@@ -57,9 +57,10 @@ export function useBillableServices() {
       shortName: s.shortName,
       serviceStatus: s.serviceStatus ?? 'ENABLED',
       serviceType: s.serviceType ? { uuid: '', display: s.serviceType.display } : undefined,
-      servicePrices: (s.servicePrices?.length ? s.servicePrices : [{ uuid: `${s.uuid}-default`, name: 'Default', price: 0 }]).map(
-        (p): ServicePrice => ({ uuid: p.uuid, name: p.name, price: p.price ?? 0 }),
-      ),
+      servicePrices: (s.servicePrices?.length
+        ? s.servicePrices
+        : [{ uuid: `${s.uuid}-default`, name: 'Default', price: 0 }]
+      ).map((p): ServicePrice => ({ uuid: p.uuid, name: p.name, price: p.price ?? 0 })),
     }));
 
   // API-first; fall back to config when the API returns nothing or errors.
@@ -110,5 +111,6 @@ export {
   getAmountPaidForPatient,
   billTotal,
   generateReceiptNumber,
+  generateOrderId,
 } from './local-bill-store';
 export type { LocalBill, LocalLineItem, LocalBillStatus, ClientType } from './local-bill-store';

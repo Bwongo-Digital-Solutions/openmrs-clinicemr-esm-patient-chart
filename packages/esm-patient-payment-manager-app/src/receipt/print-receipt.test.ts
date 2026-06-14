@@ -3,6 +3,7 @@ import type { LocalBill } from '../billing/local-bill-store';
 
 const baseBill: LocalBill = {
   uuid: 'bill-1',
+  orderId: 'ORD-1234',
   receiptNumber: 'RCPT-20260614-1234',
   patientUuid: 'patient-1',
   patientName: 'Jane Doe',

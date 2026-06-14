@@ -62,6 +62,12 @@ export const configSchema = {
     _default: 'payment-manager/patients',
     _description: 'SPA-relative path cashiers are returned to after a successful registration.',
   },
+  cashierHomePath: {
+    _type: Type.String,
+    _default: 'payment-manager/home',
+    _description:
+      'SPA-relative path cashiers land on after login and are redirected to from non-work pages (the Payment Manager workspace).',
+  },
   consultationPaymentPath: {
     _type: Type.String,
     _default: 'payment-manager/home',
@@ -87,7 +93,8 @@ export const configSchema = {
   receiptFacilityName: {
     _type: Type.String,
     _default: '',
-    _description: 'Facility name printed at the top of receipts/invoices. Falls back to the session location name when empty.',
+    _description:
+      'Facility name printed at the top of receipts/invoices. Falls back to the session location name when empty.',
   },
   receiptFacilityDetails: {
     _type: Type.Array,
@@ -130,6 +137,7 @@ export interface PaymentManagerConfig {
   receiptFacilityDetails: string[];
   receiptLogoUrl: string;
   registrationListPath: string;
+  cashierHomePath: string;
   consultationPaymentPath: string;
   registrationEncounterTypeUuid: string;
   cashPointUuid: string;

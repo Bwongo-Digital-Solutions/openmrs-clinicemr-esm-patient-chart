@@ -16,12 +16,17 @@ import {
   TableRow,
   Tile,
 } from '@carbon/react';
-import { Add, ArrowRight, Receipt } from '@carbon/react/icons';
+import { ArrowRight, Receipt } from '@carbon/react/icons';
 import { formatDate, navigate, openmrsFetch, restBaseUrl, useConfig, useSession } from '@openmrs/esm-framework';
 import type { PaymentManagerConfig } from '../config-schema';
 import { isCashierUser } from '../roles';
 import { getRegisteredPatients } from '../registered-patients-store';
-import { getAmountPaidForPatient, getBillsForPatient, useLocalBills, type LocalBill } from '../billing/billing.resource';
+import {
+  getAmountPaidForPatient,
+  getBillsForPatient,
+  useLocalBills,
+  type LocalBill,
+} from '../billing/billing.resource';
 import PaymentReceiptModal from '../receipt/payment-receipt-modal.component';
 import styles from '../payment-manager.scss';
 
@@ -48,10 +53,17 @@ async function fetchPatients(uuids: string[]): Promise<PatientResource[]> {
     .map((r) => r.value);
 }
 
-const MyRegisteredPatients: React.FC = () => {
+interface MyRegisteredPatientsProps {
+  /** When true, renders only the content (no page container/title) for tab embedding. */
+  embedded?: boolean;
+}
+
+const MyRegisteredPatients: React.FC<MyRegisteredPatientsProps> = ({ embedded = false }) => {
   const { t } = useTranslation();
   const session = useSession();
   const config = useConfig<PaymentManagerConfig>();
+  const shell = (children: React.ReactNode) =>
+    embedded ? <>{children}</> : <div className={styles.container}>{children}</div>;
   const currentUserUuid = session?.user?.uuid;
   const isCashier = isCashierUser(session, config.cashierRoleNames);
 
@@ -114,8 +126,6 @@ const MyRegisteredPatients: React.FC = () => {
     return rows.slice(start, start + pageSize);
   }, [rows, currentPage, pageSize]);
 
-  const startNewRegistration = () => navigate({ to: `\${openmrsSpaBase}/${config.consultationPaymentPath}` });
-
   const headers = [
     { key: 'name', header: t('patientName', 'Name') },
     { key: 'identifier', header: t('identifier', 'Identifier') },
@@ -127,49 +137,44 @@ const MyRegisteredPatients: React.FC = () => {
   ];
 
   if (session?.user && !isCashier) {
-    return (
-      <div className={styles.container}>
-        <InlineNotification
-          kind="error"
-          lowContrast
-          hideCloseButton
-          title={t('accessDenied', 'Access denied')}
-          subtitle={t(
-            'cashierOnly',
-            'Only Cashier, Receptionist or Organisation Nurse roles can use the Payment Manager.',
-          )}
-        />
-      </div>
+    return shell(
+      <InlineNotification
+        kind="error"
+        lowContrast
+        hideCloseButton
+        title={t('accessDenied', 'Access denied')}
+        subtitle={t(
+          'cashierOnly',
+          'Only Cashier, Receptionist or Organisation Nurse roles can use the Payment Manager.',
+        )}
+      />,
     );
   }
 
   if (entries.length === 0) {
-    return (
-      <div className={styles.container}>
-        <h2 className={styles.title}>{t('myRegisteredPatients', 'My Registered Patients')}</h2>
+    return shell(
+      <>
+        {!embedded && <h2 className={styles.title}>{t('myRegisteredPatients', 'My Registered Patients')}</h2>}
         <Tile className={styles.emptyTile}>
           <p>{t('noPatientsRegistered', "You haven't registered any patients yet.")}</p>
-          <Button className={styles.emptyAction} kind="primary" renderIcon={Add} onClick={startNewRegistration}>
-            {t('newConsultation', 'New consultation & registration')}
-          </Button>
         </Tile>
-      </div>
+      </>,
     );
   }
 
   if (isLoading) {
-    return (
-      <div className={styles.container}>
-        <h2 className={styles.title}>{t('myRegisteredPatients', 'My Registered Patients')}</h2>
+    return shell(
+      <>
+        {!embedded && <h2 className={styles.title}>{t('myRegisteredPatients', 'My Registered Patients')}</h2>}
         <DataTableSkeleton headers={headers} rowCount={Math.min(entries.length, 5)} />
-      </div>
+      </>,
     );
   }
 
   if (error) {
-    return (
-      <div className={styles.container}>
-        <h2 className={styles.title}>{t('myRegisteredPatients', 'My Registered Patients')}</h2>
+    return shell(
+      <>
+        {!embedded && <h2 className={styles.title}>{t('myRegisteredPatients', 'My Registered Patients')}</h2>}
         <InlineNotification
           kind="error"
           title={t('errorLoading', "Could not load patients you've registered.")}
@@ -177,27 +182,17 @@ const MyRegisteredPatients: React.FC = () => {
           lowContrast
           hideCloseButton
         />
-      </div>
+      </>,
     );
   }
 
-  return (
-    <div className={styles.container}>
-      <div className={styles.header}>
-        <h2 className={styles.title}>{t('myRegisteredPatients', 'My Registered Patients')}</h2>
-        <div style={{ display: 'flex', gap: '0.5rem' }}>
-          <Button
-            kind="ghost"
-            renderIcon={Receipt}
-            onClick={() => navigate({ to: '${openmrsSpaBase}/payment-manager/home' })}
-          >
-            {t('paymentManager', 'Payment Manager')}
-          </Button>
-          <Button kind="primary" renderIcon={Add} onClick={startNewRegistration}>
-            {t('newConsultation', 'New consultation & registration')}
-          </Button>
+  return shell(
+    <>
+      {!embedded && (
+        <div className={styles.header}>
+          <h2 className={styles.title}>{t('myRegisteredPatients', 'My Registered Patients')}</h2>
         </div>
-      </div>
+      )}
       <DataTable rows={pagedRows} headers={headers} useZebraStyles>
         {({ rows: dataRows, headers: dataHeaders, getHeaderProps, getRowProps, getTableProps }) => (
           <TableContainer>
@@ -217,12 +212,7 @@ const MyRegisteredPatients: React.FC = () => {
                     {r.cells.map((cell) =>
                       cell.info.header === 'actions' ? (
                         <TableCell key={cell.id}>
-                          <Button
-                            kind="ghost"
-                            size="sm"
-                            renderIcon={Receipt}
-                            onClick={() => openReceipt(r.id)}
-                          >
+                          <Button kind="ghost" size="sm" renderIcon={Receipt} onClick={() => openReceipt(r.id)}>
                             {t('receipt', 'Receipt')}
                           </Button>
                           <Button
@@ -258,7 +248,7 @@ const MyRegisteredPatients: React.FC = () => {
         }}
       />
       {receiptBill && <PaymentReceiptModal bill={receiptBill} onClose={() => setReceiptBill(null)} />}
-    </div>
+    </>,
   );
 };
 

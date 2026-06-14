@@ -15,6 +15,7 @@ import {
 } from '@carbon/react';
 import { Money, Renew } from '@carbon/react/icons';
 import { formatDate, useConfig, useSession } from '@openmrs/esm-framework';
+import { EmptyDataIllustration } from '@openmrs/esm-patient-common-lib';
 import type { PaymentManagerConfig } from '../config-schema';
 import { isCashierUser } from '../roles';
 import { useLocalBills, billTotal, type LocalBill } from '../billing/billing.resource';
@@ -37,11 +38,11 @@ const PendingPayments: React.FC<PendingPaymentsProps> = ({ embedded = false }) =
   const currencyFmt = (value: number) => `${config.defaultCurrency} ${new Intl.NumberFormat().format(value ?? 0)}`;
 
   const headers = [
-    { key: 'patient', header: t('patientName', 'Patient name') },
     { key: 'requestedBy', header: t('providerName', 'Provider name') },
-    { key: 'items', header: t('itemOrService', 'Item / service') },
-    { key: 'amount', header: t('price', 'Price') },
-    { key: 'created', header: t('created', 'Created') },
+    { key: 'patient', header: t('patientName', 'Patient name') },
+    { key: 'items', header: t('itemOrders', 'Item orders') },
+    { key: 'amount', header: t('priceOfItem', 'Price of item') },
+    { key: 'orderId', header: t('orderId', 'Order ID') },
     { key: 'actions', header: '' },
   ];
 
@@ -50,11 +51,11 @@ const PendingPayments: React.FC<PendingPaymentsProps> = ({ embedded = false }) =
       bills.map((bill) => ({
         id: bill.uuid,
         bill,
-        patient: bill.patientName || bill.patientUuid || '—',
         requestedBy: bill.requestedByName || t('frontDesk', 'Front desk'),
+        patient: bill.patientName || bill.patientUuid || '—',
         items: bill.lineItems.map((li) => li.name || t('service', 'Service')).join(', '),
         amount: currencyFmt(billTotal(bill)),
-        created: bill.createdAt ? formatDate(new Date(bill.createdAt)) : '—',
+        orderId: bill.orderId ?? '—',
       })),
     // eslint-disable-next-line react-hooks/exhaustive-deps
     [bills, config.defaultCurrency],
@@ -89,8 +90,15 @@ const PendingPayments: React.FC<PendingPaymentsProps> = ({ embedded = false }) =
       )}
 
       {rows.length === 0 ? (
-        <Tile className={styles.emptyTile}>
-          <p>{t('noPendingPayments', 'There are no pending payments right now.')}</p>
+        <Tile className={styles.emptyState}>
+          <EmptyDataIllustration />
+          <p className={styles.emptyStateTitle}>{t('noPendingPaymentOrders', 'No pending payment orders')}</p>
+          <p className={styles.emptyStateContent}>
+            {t(
+              'noPendingPaymentsSubtitle',
+              'Payment requests sent by providers for drugs, lab tests and other orders will appear here.',
+            )}
+          </p>
         </Tile>
       ) : (
         <DataTable rows={rows} headers={headers} useZebraStyles>

@@ -33,6 +33,7 @@ describe('local-bill-store', () => {
     });
     expect(bill.status).toBe('PENDING');
     expect(bill.amountPaid).toBe(0);
+    expect(bill.orderId).toMatch(/^ORD-\d{4}$/);
     expect(getBillsByStatus('PENDING')).toHaveLength(1);
     expect(getBillsByStatus('PAID')).toHaveLength(0);
   });

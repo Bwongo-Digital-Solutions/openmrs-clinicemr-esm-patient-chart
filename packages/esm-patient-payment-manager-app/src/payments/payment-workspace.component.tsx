@@ -6,6 +6,7 @@ import type { PaymentManagerConfig } from '../config-schema';
 import { isCashierUser } from '../roles';
 import RegisterPatientForm from '../consultation/register-patient-form.component';
 import PendingPayments from './pending-payments.component';
+import MyRegisteredPatients from '../patients/my-registered-patients.component';
 import styles from '../payment-manager.scss';
 
 /**
@@ -46,6 +47,7 @@ const PaymentWorkspace: React.FC = () => {
         <TabList aria-label={t('paymentManager', 'Payment Manager')} contained>
           <Tab>{t('registerNewPatient', 'Register New Patient')}</Tab>
           <Tab>{t('pendingPayments', 'Pending Payments')}</Tab>
+          <Tab>{t('myRegisteredPatients', 'My Registered Patients')}</Tab>
         </TabList>
         <TabPanels>
           <TabPanel>
@@ -56,6 +58,11 @@ const PaymentWorkspace: React.FC = () => {
           <TabPanel>
             <div className={styles.tabContent}>
               <PendingPayments embedded />
+            </div>
+          </TabPanel>
+          <TabPanel>
+            <div className={styles.tabContent}>
+              <MyRegisteredPatients embedded />
             </div>
           </TabPanel>
         </TabPanels>
