@@ -1,6 +1,6 @@
 {
   "name": "@clinicemr/esm-patient-payment-manager-app",
-  "version": "1.3.0",
+  "version": "1.4.0",
   "license": "MPL-2.0",
   "description": "Role-aware payment manager for OpenMRS CLINICEMR distro: tabbed cashier workspace (register new patient + pending provider payment requests), searchable Billing/Cashier-API service picker, corporate/private payer selection, printable receipts & invoices, and a patient-chart billing extension",
   "browser": "dist/openmrs-esm-patient-payment-manager-app.js",
