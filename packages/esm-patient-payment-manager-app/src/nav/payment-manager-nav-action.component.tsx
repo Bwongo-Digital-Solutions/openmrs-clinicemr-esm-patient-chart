@@ -22,9 +22,9 @@ const PaymentManagerNavAction: React.FC = () => {
 
   return (
     <HeaderGlobalAction
-      aria-label={t('pendingPayments', 'Pending Payments')}
+      aria-label={t('paymentManager', 'Payment Manager')}
       tooltipAlignment="end"
-      onClick={() => navigate({ to: '${openmrsSpaBase}/payment-manager/pending' })}
+      onClick={() => navigate({ to: '${openmrsSpaBase}/payment-manager/home' })}
     >
       <Money size={20} />
     </HeaderGlobalAction>

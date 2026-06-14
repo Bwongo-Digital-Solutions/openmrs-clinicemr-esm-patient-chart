@@ -64,8 +64,9 @@ export const configSchema = {
   },
   consultationPaymentPath: {
     _type: Type.String,
-    _default: 'payment-manager/consultation',
-    _description: 'SPA-relative path of the consultation payment gate that must be completed before registration.',
+    _default: 'payment-manager/home',
+    _description:
+      'SPA-relative path of the consultation payment gate (the Payment Manager workspace) that must be completed before registration.',
   },
   registrationEncounterTypeUuid: {
     _type: Type.UUID,
@@ -82,6 +83,22 @@ export const configSchema = {
     _type: Type.String,
     _default: 'UGX',
     _description: 'Currency code shown next to prices.',
+  },
+  receiptFacilityName: {
+    _type: Type.String,
+    _default: '',
+    _description: 'Facility name printed at the top of receipts/invoices. Falls back to the session location name when empty.',
+  },
+  receiptFacilityDetails: {
+    _type: Type.Array,
+    _elements: { _type: Type.String },
+    _default: [],
+    _description: 'Lines (address, phone, etc.) printed under the facility name on receipts/invoices.',
+  },
+  receiptLogoUrl: {
+    _type: Type.String,
+    _default: '',
+    _description: 'Optional logo URL printed on receipts/invoices (e.g. /openmrs/spa/logo.png).',
   },
   pageSize: {
     _type: Type.Number,
@@ -109,6 +126,9 @@ export interface PaymentManagerConfig {
   paymentMethods: string[];
   insuranceProviders: string[];
   consultationBillableServiceUuid: string;
+  receiptFacilityName: string;
+  receiptFacilityDetails: string[];
+  receiptLogoUrl: string;
   registrationListPath: string;
   consultationPaymentPath: string;
   registrationEncounterTypeUuid: string;

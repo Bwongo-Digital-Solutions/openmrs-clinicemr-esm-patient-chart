@@ -5,6 +5,10 @@
   },
   "pages": [
     {
+      "component": "paymentWorkspace",
+      "route": "payment-manager/home"
+    },
+    {
       "component": "consultationPayment",
       "route": "payment-manager/consultation"
     },
@@ -42,6 +46,11 @@
       "component": "orderPaymentPanel",
       "slot": "order-basket-slot",
       "order": 99
+    },
+    {
+      "name": "patient-bills-billing-extension",
+      "component": "patientBillsExtension",
+      "slot": "patient-chart-summary-dashboard-slot"
     }
   ]
 }

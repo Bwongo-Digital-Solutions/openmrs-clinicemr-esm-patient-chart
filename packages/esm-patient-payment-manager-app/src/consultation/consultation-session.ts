@@ -16,6 +16,9 @@ export interface ConsultationToken {
   priceUuid?: string;
   priceName?: string;
   paymentModeUuid: string;
+  clientType?: 'PRIVATE' | 'CORPORATE';
+  insuranceProvider?: string;
+  cashierName?: string;
   amountTendered: number;
   createdAt: number;
 }

@@ -1,28 +1,78 @@
 import useSWR from 'swr';
 import { openmrsFetch, restBaseUrl, useConfig } from '@openmrs/esm-framework';
-import type { BillableService, PaymentMode } from './types';
+import type { BillableService, PaymentMode, ServicePrice } from './types';
 import type { ConfiguredBillableService, PaymentManagerConfig } from '../config-schema';
 
 interface RestResults<T> {
   results: T[];
 }
 
+interface ApiServicePrice {
+  uuid: string;
+  name: string;
+  price: number;
+}
+
+interface ApiBillableService {
+  uuid: string;
+  name: string;
+  shortName?: string;
+  serviceStatus?: string;
+  serviceType?: { display: string };
+  servicePrices?: ApiServicePrice[];
+}
+
+/** Maps the configured billableServices array into the BillableService shape. */
+function configuredServices(config: PaymentManagerConfig): BillableService[] {
+  return (config.billableServices ?? []).map((s: ConfiguredBillableService) => ({
+    uuid: s.uuid,
+    name: s.name,
+    serviceStatus: 'ENABLED',
+    servicePrices: [{ uuid: `${s.uuid}-default`, name: 'Default', price: s.price ?? 0 }],
+  }));
+}
+
 /**
- * Billable services come from distro configuration (`billableServices`) because
- * the billing/cashier backend OMOD is not installed. Each configured service is
- * exposed with a single "Default" service price so existing UI keeps working.
+ * Billable services are fetched live from the Billing/Cashier module REST API
+ * (`{billingApiBasePath}/billableService`), following the official
+ * openmrs-esm-billing-app. If the OMOD is unavailable (network/404 error) we
+ * gracefully fall back to the distro `billableServices` config so the workflow
+ * never breaks.
  */
 export function useBillableServices() {
   const config = useConfig<PaymentManagerConfig>();
-  const billableServices: BillableService[] = (config.billableServices ?? []).map(
-    (s: ConfiguredBillableService) => ({
+  const base = config.billingApiBasePath || 'billing';
+  const rep = 'custom:(uuid,name,shortName,serviceStatus,serviceType:(display),servicePrices:(uuid,name,price))';
+  const url = `${restBaseUrl}/${base}/billableService?v=${rep}`;
+
+  const { data, error, isLoading, mutate } = useSWR<{ data: RestResults<ApiBillableService> }>(url, openmrsFetch, {
+    shouldRetryOnError: false,
+  });
+
+  const apiServices: BillableService[] = (data?.data?.results ?? [])
+    .filter((s) => !s.serviceStatus || s.serviceStatus === 'ENABLED')
+    .map((s) => ({
       uuid: s.uuid,
       name: s.name,
-      serviceStatus: 'ENABLED',
-      servicePrices: [{ uuid: `${s.uuid}-default`, name: 'Default', price: s.price ?? 0 }],
-    }),
-  );
-  return { billableServices, error: undefined, isLoading: false, mutate: () => {} };
+      shortName: s.shortName,
+      serviceStatus: s.serviceStatus ?? 'ENABLED',
+      serviceType: s.serviceType ? { uuid: '', display: s.serviceType.display } : undefined,
+      servicePrices: (s.servicePrices?.length ? s.servicePrices : [{ uuid: `${s.uuid}-default`, name: 'Default', price: 0 }]).map(
+        (p): ServicePrice => ({ uuid: p.uuid, name: p.name, price: p.price ?? 0 }),
+      ),
+    }));
+
+  // API-first; fall back to config when the API returns nothing or errors.
+  const fallback = configuredServices(config);
+  const billableServices = apiServices.length ? apiServices : fallback;
+
+  return {
+    billableServices,
+    error: apiServices.length || fallback.length ? undefined : error,
+    isLoading: isLoading && fallback.length === 0,
+    usingFallback: apiServices.length === 0,
+    mutate,
+  };
 }
 
 /**
@@ -59,5 +109,6 @@ export {
   getBillsForPatient,
   getAmountPaidForPatient,
   billTotal,
+  generateReceiptNumber,
 } from './local-bill-store';
-export type { LocalBill, LocalLineItem, LocalBillStatus } from './local-bill-store';
+export type { LocalBill, LocalLineItem, LocalBillStatus, ClientType } from './local-bill-store';

@@ -1,6 +1,6 @@
 import React, { useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
-import { Accordion, AccordionItem, InlineNotification, RadioButton, RadioButtonGroup, Tag } from '@carbon/react';
+import { ComboBox, InlineLoading, InlineNotification, Tag } from '@carbon/react';
 import { useBillableServices } from './billing.resource';
 import type { BillableService, ServicePrice } from './types';
 import styles from '../payment-manager.scss';
@@ -27,10 +27,11 @@ interface ServiceOption {
 }
 
 /**
- * Accordion listing every billable service stored in the system (distro
- * `billableServices` config) together with its price. Each service/price
- * combination is a selectable radio option so cashiers can see the cost of
- * every service at a glance and pick one.
+ * Searchable list (Carbon ComboBox) of every billable service / item available
+ * in the system. Data is fetched from the Billing/Cashier module REST API
+ * (with a distro-config fallback) so it includes services and stock items
+ * priced in the billing module. Each option shows the price, and selecting one
+ * returns the matching service + price to the parent.
  */
 const BillableServicePicker: React.FC<BillableServicePickerProps> = ({
   id = 'billable-service-picker',
@@ -40,7 +41,7 @@ const BillableServicePicker: React.FC<BillableServicePickerProps> = ({
   onChange,
 }) => {
   const { t } = useTranslation();
-  const { billableServices } = useBillableServices();
+  const { billableServices, isLoading, usingFallback } = useBillableServices();
 
   const options = useMemo<ServiceOption[]>(() => {
     const formatter = new Intl.NumberFormat(undefined, { maximumFractionDigits: 2 });
@@ -50,7 +51,7 @@ const BillableServicePicker: React.FC<BillableServicePickerProps> = ({
           id: `${service.uuid}:${price.uuid}`,
           service,
           price,
-          label: service.name,
+          label: service.servicePrices && service.servicePrices.length > 1 ? `${service.name} (${price.name})` : service.name,
           priceLabel: `${currency} ${formatter.format(price.price ?? 0)}`,
         }),
       ),
@@ -62,58 +63,60 @@ const BillableServicePicker: React.FC<BillableServicePickerProps> = ({
     [options, selectedServiceUuid],
   );
 
+  if (isLoading) {
+    return <InlineLoading description={t('loadingServices', 'Loading services…')} />;
+  }
+
   if (options.length === 0) {
     return (
       <InlineNotification
         kind="warning"
         lowContrast
         hideCloseButton
-        title={t('noServices', 'No billable services configured')}
+        title={t('noServices', 'No billable services available')}
         subtitle={t(
           'noServicesSubtitle',
-          'Ask an administrator to add billable services to the Payment Manager configuration.',
+          'Add billable services/items in the Billing module, or configure them in the Payment Manager settings.',
         )}
       />
     );
   }
 
-  const handleSelect = (optionId: string | number) => {
-    const option = options.find((o) => o.id === String(optionId));
-    onChange(option ? { service: option.service, price: option.price } : null);
-  };
-
   return (
-    <Accordion>
-      <AccordionItem
-        title={`${titleText ?? t('selectService', 'Select service')}${
-          selectedOption ? ` — ${selectedOption.label} (${selectedOption.priceLabel})` : ''
-        }`}
-        open
-      >
-        <RadioButtonGroup
-          name={id}
-          orientation="vertical"
-          valueSelected={selectedOption?.id ?? ''}
-          onChange={handleSelect}
-        >
-          {options.map((option) => (
-            <RadioButton
-              key={option.id}
-              id={`${id}-${option.id}`}
-              value={option.id}
-              labelText={
-                <span className={styles.serviceRow}>
-                  <span>{option.label}</span>
-                  <Tag type="green" size="sm">
-                    {option.priceLabel}
-                  </Tag>
-                </span>
-              }
-            />
-          ))}
-        </RadioButtonGroup>
-      </AccordionItem>
-    </Accordion>
+    <>
+      <ComboBox
+        id={id}
+        titleText={titleText ?? t('selectService', 'Search for a service or item')}
+        placeholder={t('searchServicePlaceholder', 'Type to search services & items…')}
+        items={options}
+        itemToString={(item: ServiceOption | null) => (item ? `${item.label} — ${item.priceLabel}` : '')}
+        itemToElement={(item: ServiceOption) => (
+          <span className={styles.serviceRow}>
+            <span>{item.label}</span>
+            <Tag type="green" size="sm">
+              {item.priceLabel}
+            </Tag>
+          </span>
+        )}
+        selectedItem={selectedOption}
+        onChange={({ selectedItem }: { selectedItem: ServiceOption | null }) =>
+          onChange(selectedItem ? { service: selectedItem.service, price: selectedItem.price } : null)
+        }
+      />
+      {usingFallback && (
+        <InlineNotification
+          kind="info"
+          lowContrast
+          hideCloseButton
+          className={styles.fallbackNote}
+          title={t('usingConfiguredServices', 'Using configured services')}
+          subtitle={t(
+            'usingConfiguredServicesSub',
+            'The Billing module did not return any services, so the configured list is shown.',
+          )}
+        />
+      )}
+    </>
   );
 };
 

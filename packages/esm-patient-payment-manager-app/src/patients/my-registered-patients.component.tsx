@@ -21,7 +21,8 @@ import { formatDate, navigate, openmrsFetch, restBaseUrl, useConfig, useSession 
 import type { PaymentManagerConfig } from '../config-schema';
 import { isCashierUser } from '../roles';
 import { getRegisteredPatients } from '../registered-patients-store';
-import { getAmountPaidForPatient, useLocalBills } from '../billing/billing.resource';
+import { getAmountPaidForPatient, getBillsForPatient, useLocalBills, type LocalBill } from '../billing/billing.resource';
+import PaymentReceiptModal from '../receipt/payment-receipt-modal.component';
 import styles from '../payment-manager.scss';
 
 interface PatientResource {
@@ -62,6 +63,14 @@ const MyRegisteredPatients: React.FC = () => {
 
   const [currentPage, setCurrentPage] = useState(1);
   const [pageSize, setPageSize] = useState(config.pageSize ?? 25);
+  const [receiptBill, setReceiptBill] = useState<LocalBill | null>(null);
+
+  const openReceipt = (patientUuid: string) => {
+    const paid = getBillsForPatient(patientUuid).find((b) => b.status === 'PAID');
+    if (paid) {
+      setReceiptBill(paid);
+    }
+  };
 
   const swrKey =
     currentUserUuid && entries.length > 0
@@ -180,9 +189,9 @@ const MyRegisteredPatients: React.FC = () => {
           <Button
             kind="ghost"
             renderIcon={Receipt}
-            onClick={() => navigate({ to: '${openmrsSpaBase}/payment-manager/pending' })}
+            onClick={() => navigate({ to: '${openmrsSpaBase}/payment-manager/home' })}
           >
-            {t('pendingPayments', 'Pending Payments')}
+            {t('paymentManager', 'Payment Manager')}
           </Button>
           <Button kind="primary" renderIcon={Add} onClick={startNewRegistration}>
             {t('newConsultation', 'New consultation & registration')}
@@ -208,6 +217,14 @@ const MyRegisteredPatients: React.FC = () => {
                     {r.cells.map((cell) =>
                       cell.info.header === 'actions' ? (
                         <TableCell key={cell.id}>
+                          <Button
+                            kind="ghost"
+                            size="sm"
+                            renderIcon={Receipt}
+                            onClick={() => openReceipt(r.id)}
+                          >
+                            {t('receipt', 'Receipt')}
+                          </Button>
                           <Button
                             kind="ghost"
                             size="sm"
@@ -240,6 +257,7 @@ const MyRegisteredPatients: React.FC = () => {
           }
         }}
       />
+      {receiptBill && <PaymentReceiptModal bill={receiptBill} onClose={() => setReceiptBill(null)} />}
     </div>
   );
 };

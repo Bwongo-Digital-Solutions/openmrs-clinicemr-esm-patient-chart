@@ -31,6 +31,8 @@ export const myRegisteredPatients = getAsyncLifecycle(
 
 export const pendingPayments = getAsyncLifecycle(() => import('./payments/pending-payments.component'), options);
 
+export const paymentWorkspace = getAsyncLifecycle(() => import('./payments/payment-workspace.component'), options);
+
 export const paymentManagerLockdown = getAsyncLifecycle(
   () => import('./lockdown/payment-manager-lockdown.component'),
   options,
@@ -48,5 +50,10 @@ export const paymentManagerNavAction = getAsyncLifecycle(
 
 export const paymentNotificationsAction = getAsyncLifecycle(
   () => import('./notifications/payment-notifications-action.component'),
+  options,
+);
+
+export const patientBillsExtension = getAsyncLifecycle(
+  () => import('./billing-extension/patient-bills.extension'),
   options,
 );

@@ -1,11 +1,13 @@
 import React, { useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { InlineNotification, Modal, NumberInput } from '@carbon/react';
-import { showSnackbar, useConfig } from '@openmrs/esm-framework';
+import { Checkbox, InlineNotification, Modal, NumberInput } from '@carbon/react';
+import { showSnackbar, useConfig, useSession } from '@openmrs/esm-framework';
 import type { PaymentManagerConfig } from '../config-schema';
 import { payLocalBill, billTotal, type LocalBill } from '../billing/billing.resource';
 import PayerSelector, { formatPayer, type PayerSelection } from '../billing/payer-selector.component';
 import { addNotification } from '../notifications/payment-notifications-store';
+import { printReceipt } from '../receipt/print-receipt';
+import { useReceiptFacility } from '../receipt/use-receipt-facility';
 
 interface ReceivePaymentModalProps {
   bill: LocalBill;
@@ -16,11 +18,14 @@ interface ReceivePaymentModalProps {
 const ReceivePaymentModal: React.FC<ReceivePaymentModalProps> = ({ bill, onClose, onPaid }) => {
   const { t } = useTranslation();
   const config = useConfig<PaymentManagerConfig>();
+  const session = useSession();
+  const facility = useReceiptFacility();
 
   const total = billTotal(bill);
 
   const [payer, setPayer] = useState<PayerSelection>({ clientType: 'PRIVATE', payer: '' });
   const [amountTendered, setAmountTendered] = useState(total);
+  const [printAfter, setPrintAfter] = useState(true);
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -34,7 +39,24 @@ const ReceivePaymentModal: React.FC<ReceivePaymentModalProps> = ({ bill, onClose
     setSubmitting(true);
     setError(null);
     try {
-      payLocalBill(bill.uuid, { paymentMethod: formatPayer(payer), amountTendered });
+      const paidBill = payLocalBill(bill.uuid, {
+        paymentMethod: formatPayer(payer),
+        amountTendered,
+        clientType: payer.clientType,
+        insuranceProvider: payer.clientType === 'CORPORATE' ? payer.payer : undefined,
+      });
+      if (printAfter && paidBill) {
+        try {
+          printReceipt({
+            bill: { ...paidBill, cashierName: paidBill.cashierName ?? session?.user?.display },
+            facility,
+            currency: config.defaultCurrency,
+            documentType: 'RECEIPT',
+          });
+        } catch {
+          /* printing is best-effort */
+        }
+      }
       // Notify the clinician who requested the order that payment is concluded.
       if (bill.requestedByUuid) {
         addNotification({
@@ -107,6 +129,14 @@ const ReceivePaymentModal: React.FC<ReceivePaymentModalProps> = ({ bill, onClose
           <span>{currencyFmt(amountTendered - total)}</span>
         </p>
       )}
+      <div style={{ marginTop: '1rem' }}>
+        <Checkbox
+          id="receive-print-after"
+          labelText={t('printReceiptAfter', 'Print receipt after payment')}
+          checked={printAfter}
+          onChange={(_e, { checked }) => setPrintAfter(checked)}
+        />
+      </div>
       {error && (
         <InlineNotification kind="error" lowContrast hideCloseButton title={t('error', 'Error')} subtitle={error} />
       )}

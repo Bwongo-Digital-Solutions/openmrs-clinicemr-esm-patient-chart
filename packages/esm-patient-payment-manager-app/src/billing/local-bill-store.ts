@@ -19,18 +19,27 @@ export interface LocalLineItem {
   quantity: number;
 }
 
+export type ClientType = 'PRIVATE' | 'CORPORATE';
+
 export interface LocalBill {
   uuid: string;
+  /** Human-readable receipt/invoice number, assigned when the bill is paid. */
+  receiptNumber?: string;
   patientUuid: string;
   patientName: string;
   /** User uuid of the cashier/clerk who created the bill. */
   cashierUuid: string;
+  cashierName?: string;
   /** User uuid of the clinician who requested the order (to notify on payment). */
   requestedByUuid?: string;
   requestedByName?: string;
   status: LocalBillStatus;
   lineItems: LocalLineItem[];
   paymentMethod?: string;
+  /** Private (self-paying) or Corporate (insurance). */
+  clientType?: ClientType;
+  /** Insurance provider name when clientType is CORPORATE. */
+  insuranceProvider?: string;
   amountTendered?: number;
   amountPaid?: number;
   createdAt: number;
@@ -71,6 +80,16 @@ function generateUuid(): string {
   return `bill-${Date.now()}-${Math.random().toString(36).slice(2, 10)}`;
 }
 
+/** Generates a human-readable receipt/invoice number, e.g. RCPT-20260614-4821. */
+export function generateReceiptNumber(): string {
+  const now = new Date();
+  const y = now.getFullYear();
+  const m = String(now.getMonth() + 1).padStart(2, '0');
+  const d = String(now.getDate()).padStart(2, '0');
+  const seq = Math.floor(Math.random() * 9000 + 1000);
+  return `RCPT-${y}${m}${d}-${seq}`;
+}
+
 export function billTotal(bill: Pick<LocalBill, 'lineItems'>): number {
   return bill.lineItems.reduce((sum, li) => sum + (li.price ?? 0) * (li.quantity ?? 1), 0);
 }
@@ -79,11 +98,14 @@ export interface CreateLocalBillArgs {
   patientUuid: string;
   patientName?: string;
   cashierUuid: string;
+  cashierName?: string;
   requestedByUuid?: string;
   requestedByName?: string;
   lineItems: LocalLineItem[];
   status?: LocalBillStatus;
   paymentMethod?: string;
+  clientType?: ClientType;
+  insuranceProvider?: string;
   amountTendered?: number;
 }
 
@@ -92,14 +114,18 @@ export function createLocalBill(args: CreateLocalBillArgs): LocalBill {
   const status = args.status ?? 'PENDING';
   const bill: LocalBill = {
     uuid: generateUuid(),
+    receiptNumber: status === 'PAID' ? generateReceiptNumber() : undefined,
     patientUuid: args.patientUuid,
     patientName: args.patientName ?? '',
     cashierUuid: args.cashierUuid,
+    cashierName: args.cashierName,
     requestedByUuid: args.requestedByUuid,
     requestedByName: args.requestedByName,
     status,
     lineItems: args.lineItems,
     paymentMethod: args.paymentMethod,
+    clientType: args.clientType,
+    insuranceProvider: args.insuranceProvider,
     amountTendered: args.amountTendered,
     amountPaid: status === 'PAID' ? billTotal({ lineItems: args.lineItems }) : 0,
     createdAt: Date.now(),
@@ -113,17 +139,25 @@ export function createLocalBill(args: CreateLocalBillArgs): LocalBill {
 export interface PayLocalBillArgs {
   paymentMethod: string;
   amountTendered: number;
+  clientType?: ClientType;
+  insuranceProvider?: string;
 }
 
 /** Marks a bill PAID and returns the updated bill (or null if not found). */
-export function payLocalBill(billUuid: string, { paymentMethod, amountTendered }: PayLocalBillArgs): LocalBill | null {
+export function payLocalBill(
+  billUuid: string,
+  { paymentMethod, amountTendered, clientType, insuranceProvider }: PayLocalBillArgs,
+): LocalBill | null {
   const bills = readBills();
   const idx = bills.findIndex((b) => b.uuid === billUuid);
   if (idx === -1) return null;
   const updated: LocalBill = {
     ...bills[idx],
     status: 'PAID',
+    receiptNumber: bills[idx].receiptNumber ?? generateReceiptNumber(),
     paymentMethod,
+    clientType: clientType ?? bills[idx].clientType,
+    insuranceProvider: insuranceProvider ?? bills[idx].insuranceProvider,
     amountTendered,
     amountPaid: billTotal(bills[idx]),
     paidAt: Date.now(),

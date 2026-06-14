@@ -7,6 +7,7 @@ import { isCashierUser } from '../roles';
 import { addRegisteredPatient } from '../registered-patients-store';
 import { clearConsultationToken, getConsultationToken } from './consultation-session';
 import { createLocalBill } from '../billing/billing.resource';
+import { printReceipt } from '../receipt/print-receipt';
 
 /**
  * One-shot redirect target the patient-registration app sends the cashier to
@@ -56,9 +57,10 @@ const PostRegistrationRedirect: React.FC = () => {
 
     if (token && patientUuid) {
       try {
-        createLocalBill({
+        const bill = createLocalBill({
           patientUuid,
           cashierUuid: session.user.uuid,
+          cashierName: token.cashierName ?? session.user.display,
           lineItems: [
             {
               name: token.serviceName,
@@ -68,6 +70,8 @@ const PostRegistrationRedirect: React.FC = () => {
           ],
           status: 'PAID',
           paymentMethod: token.paymentModeUuid,
+          clientType: token.clientType,
+          insuranceProvider: token.insuranceProvider,
           amountTendered: token.amountTendered,
         });
         showSnackbar({
@@ -75,6 +79,21 @@ const PostRegistrationRedirect: React.FC = () => {
           title: t('consultationBilled', 'Consultation fee settled'),
           subtitle: token.serviceName,
         });
+        // Print the consultation/registration receipt now that the patient exists.
+        try {
+          printReceipt({
+            bill,
+            facility: {
+              name: config.receiptFacilityName || session?.sessionLocation?.display || 'Clinic',
+              details: (config.receiptFacilityDetails ?? []).filter(Boolean),
+              logoUrl: config.receiptLogoUrl || undefined,
+            },
+            currency: config.defaultCurrency,
+            documentType: 'RECEIPT',
+          });
+        } catch {
+          /* printing is best-effort */
+        }
       } catch (err) {
         showSnackbar({
           kind: 'error',

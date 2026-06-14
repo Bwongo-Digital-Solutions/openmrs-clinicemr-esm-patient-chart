@@ -21,7 +21,12 @@ import { useLocalBills, billTotal, type LocalBill } from '../billing/billing.res
 import ReceivePaymentModal from './receive-payment-modal.component';
 import styles from '../payment-manager.scss';
 
-const PendingPayments: React.FC = () => {
+interface PendingPaymentsProps {
+  /** When true, renders only the table (no page container/title) for tab embedding. */
+  embedded?: boolean;
+}
+
+const PendingPayments: React.FC<PendingPaymentsProps> = ({ embedded = false }) => {
   const { t } = useTranslation();
   const session = useSession();
   const config = useConfig<PaymentManagerConfig>();
@@ -32,10 +37,10 @@ const PendingPayments: React.FC = () => {
   const currencyFmt = (value: number) => `${config.defaultCurrency} ${new Intl.NumberFormat().format(value ?? 0)}`;
 
   const headers = [
-    { key: 'patient', header: t('patient', 'Patient') },
-    { key: 'requestedBy', header: t('requestedBy', 'Requested by') },
-    { key: 'items', header: t('items', 'Items') },
-    { key: 'amount', header: t('amount', 'Amount') },
+    { key: 'patient', header: t('patientName', 'Patient name') },
+    { key: 'requestedBy', header: t('providerName', 'Provider name') },
+    { key: 'items', header: t('itemOrService', 'Item / service') },
+    { key: 'amount', header: t('price', 'Price') },
     { key: 'created', header: t('created', 'Created') },
     { key: 'actions', header: '' },
   ];
@@ -72,14 +77,16 @@ const PendingPayments: React.FC = () => {
     );
   }
 
-  return (
-    <div className={styles.container}>
-      <div className={styles.header}>
-        <h2 className={styles.title}>{t('pendingPayments', 'Pending Payments')}</h2>
-        <Button kind="ghost" renderIcon={Renew} onClick={() => mutate()}>
-          {t('refresh', 'Refresh')}
-        </Button>
-      </div>
+  const content = (
+    <>
+      {!embedded && (
+        <div className={styles.header}>
+          <h2 className={styles.title}>{t('pendingPayments', 'Pending Payments')}</h2>
+          <Button kind="ghost" renderIcon={Renew} onClick={() => mutate()}>
+            {t('refresh', 'Refresh')}
+          </Button>
+        </div>
+      )}
 
       {rows.length === 0 ? (
         <Tile className={styles.emptyTile}>
@@ -140,8 +147,10 @@ const PendingPayments: React.FC = () => {
           }}
         />
       )}
-    </div>
+    </>
   );
+
+  return embedded ? content : <div className={styles.container}>{content}</div>;
 };
 
 export default PendingPayments;

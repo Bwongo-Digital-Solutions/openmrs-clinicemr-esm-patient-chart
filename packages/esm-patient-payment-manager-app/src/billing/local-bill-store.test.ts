@@ -69,6 +69,34 @@ describe('local-bill-store', () => {
     expect(payLocalBill('does-not-exist', { paymentMethod: 'Cash', amountTendered: 0 })).toBeNull();
   });
 
+  it('assigns a receipt number when a bill is created PAID', () => {
+    const bill = createLocalBill({
+      patientUuid: 'patient-1',
+      cashierUuid: 'c',
+      lineItems: [{ name: 'A', price: 1000, quantity: 1 }],
+      status: 'PAID',
+    });
+    expect(bill.receiptNumber).toMatch(/^RCPT-\d{8}-\d{4}$/);
+  });
+
+  it('assigns a receipt number and stores client type/insurer when a pending bill is paid', () => {
+    const bill = createLocalBill({
+      patientUuid: 'patient-1',
+      cashierUuid: 'c',
+      lineItems: [{ name: 'A', price: 1000, quantity: 1 }],
+    });
+    expect(bill.receiptNumber).toBeUndefined();
+    const updated = payLocalBill(bill.uuid, {
+      paymentMethod: 'Jubilee Insurance (Insurance)',
+      amountTendered: 1000,
+      clientType: 'CORPORATE',
+      insuranceProvider: 'Jubilee Insurance',
+    });
+    expect(updated?.receiptNumber).toMatch(/^RCPT-\d{8}-\d{4}$/);
+    expect(updated?.clientType).toBe('CORPORATE');
+    expect(updated?.insuranceProvider).toBe('Jubilee Insurance');
+  });
+
   it('sums only PAID bills when computing amount paid for a patient', () => {
     createLocalBill({
       patientUuid: 'patient-1',
